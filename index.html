@@ -10,13 +10,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&family=Lalezar&family=Amiri:ital,wght@0,400;0,700;1,400&family=Noto+Naskh+Arabic:wght@400;700&family=Noto+Kufi+Arabic:wght@400;700&family=Reem+Kufi:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Roboto:ital,wght@0,400;0,700;1,400&family=Montserrat:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:ital,wght@0,400;0,700;1,400&family=Pacifico&family=Bebas+Neue&family=Oswald:wght@400;700&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: var(--tg-theme-bg-color, #0f0f14);
-    --bg2: var(--tg-theme-secondary-bg-color, #17171f);
+    --bg: var(--tg-theme-bg-color, #0c0c11);
+    --bg2: var(--tg-theme-secondary-bg-color, #15151d);
     --text: var(--tg-theme-text-color, #f2f2f7);
-    --hint: var(--tg-theme-hint-color, #8b8b96);
-    --accent: var(--tg-theme-button-color, #6c5ce7);
+    --hint: var(--tg-theme-hint-color, #85859a);
+    --accent: var(--tg-theme-button-color, #7c6cf0);
+    --accent2: #ff6b9d;
     --accent-text: var(--tg-theme-button-text-color, #ffffff);
-    --border: rgba(255,255,255,0.09);
+    --border: rgba(255,255,255,0.08);
+    --glass: rgba(255,255,255,0.055);
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ height:100%; margin:0; }
@@ -31,79 +33,101 @@
 
   header{
     display:flex; align-items:center; justify-content:space-between;
-    padding:10px 14px; border-bottom:1px solid var(--border);
+    padding:12px 16px; border-bottom:1px solid var(--border);
     background:var(--bg2); flex-shrink:0;
   }
-  header h1{ font-size:15px; margin:0; font-weight:700; }
+  header h1{ font-size:14.5px; margin:0; font-weight:800; display:flex; align-items:center; gap:7px; letter-spacing:-.2px; }
+  header h1 .dot{ width:7px; height:7px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); flex-shrink:0; }
   .save-btn{
-    background:var(--accent); color:var(--accent-text); border:none;
-    padding:8px 16px; border-radius:10px; font-family:inherit; font-size:13px;
-    font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;
+    background:linear-gradient(135deg,var(--accent),#5b4bd6); color:var(--accent-text); border:none;
+    padding:9px 18px; border-radius:11px; font-family:inherit; font-size:13px;
+    font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px;
+    box-shadow:0 4px 14px rgba(124,108,240,0.35);
   }
-  .save-btn:active{ transform:scale(0.96); }
+  .save-btn:active{ transform:scale(0.95); }
 
   #canvasWrap{
     flex:1; display:flex; align-items:center; justify-content:center;
-    overflow:hidden; padding:10px; min-height:0; position:relative;
+    overflow:hidden; padding:16px; min-height:0; position:relative;
     background:
-      linear-gradient(45deg,#20202a 25%,transparent 25%,transparent 75%,#20202a 75%),
-      linear-gradient(45deg,#20202a 25%,transparent 25%,transparent 75%,#20202a 75%);
-    background-size:20px 20px; background-position:0 0,10px 10px;
+      radial-gradient(circle at 30% 20%, rgba(124,108,240,0.10), transparent 55%),
+      radial-gradient(circle at 80% 85%, rgba(255,107,157,0.08), transparent 50%),
+      var(--bg);
   }
   #editor{
     max-width:100%; max-height:100%;
-    touch-action:none; border-radius:6px;
-    box-shadow:0 8px 30px rgba(0,0,0,0.5);
+    touch-action:none; border-radius:14px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06);
     background:#333;
   }
   #emptyHint{
     position:absolute; text-align:center; color:var(--hint); font-size:13px;
-    pointer-events:none; padding:0 30px; line-height:2;
+    pointer-events:none; padding:0 34px; line-height:2; max-width:280px;
   }
 
+  #loadingOverlay{
+    position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    flex-direction:column; gap:12px; background:rgba(12,12,17,0.75); backdrop-filter:blur(6px);
+    z-index:5; border-radius:14px;
+  }
+  #loadingOverlay.show{ display:flex; }
+  .spinner{
+    width:34px; height:34px; border-radius:50%;
+    border:3px solid rgba(255,255,255,0.15); border-top-color:var(--accent);
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  #loadingOverlay span{ font-size:12.5px; color:var(--hint); }
+
   #toolbar{
-    display:flex; gap:8px; padding:10px 12px; background:var(--bg2);
-    border-top:1px solid var(--border); flex-shrink:0; overflow-x:auto;
+    display:flex; gap:10px; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:var(--bg2);
+    border-top:1px solid var(--border); flex-shrink:0;
   }
   .tbtn{
-    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
-    background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text);
-    padding:9px 6px; border-radius:12px; font-family:inherit; font-size:11px; cursor:pointer;
-    min-width:64px;
+    flex:1; display:flex; align-items:center; justify-content:center; gap:7px;
+    background:var(--glass); border:1px solid var(--border); color:var(--text);
+    padding:12px 8px; border-radius:14px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer;
   }
-  .tbtn:active{ background:rgba(255,255,255,0.1); }
-  .tbtn svg{ width:20px; height:20px; }
+  .tbtn.primary{
+    background:linear-gradient(135deg, rgba(124,108,240,0.22), rgba(255,107,157,0.14));
+    border-color:rgba(124,108,240,0.4);
+  }
+  .tbtn:active{ transform:scale(0.96); background:rgba(255,255,255,0.1); }
+  .tbtn svg{ width:18px; height:18px; flex-shrink:0; }
 
   #panel{
     background:var(--bg2); border-top:1px solid var(--border);
-    max-height:46vh; overflow-y:auto; flex-shrink:0;
-    display:none; padding:12px 14px 18px;
+    max-height:44vh; overflow-y:auto; flex-shrink:0;
+    display:none; padding:14px 16px 20px;
   }
-  #panel.open{ display:block; }
+  #panel.open{ display:block; animation:slideUp .18s ease; }
+  @keyframes slideUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
   .panel-head{
-    display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;
   }
-  .panel-head b{ font-size:13px; }
+  .panel-head b{ font-size:13.5px; font-weight:800; }
   .panel-head-actions{ display:flex; gap:8px; }
   .icon-btn{
-    background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text);
-    width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center;
-    cursor:pointer;
+    background:var(--glass); border:1px solid var(--border); color:var(--text);
+    width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:14px;
   }
-  .icon-btn.danger{ color:#ff6b6b; }
-  .row{ margin-bottom:12px; }
+  .icon-btn:active{ transform:scale(0.92); }
+  .icon-btn.danger{ color:#ff6b7d; }
+  .row{ margin-bottom:14px; }
   .row label{
-    display:block; font-size:11px; color:var(--hint); margin-bottom:5px; font-weight:600;
+    display:block; font-size:11px; color:var(--hint); margin-bottom:6px; font-weight:700;
   }
   textarea, select, input[type=text]{
-    width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--border);
-    color:var(--text); padding:9px 10px; border-radius:9px; font-family:inherit; font-size:14px;
-    resize:vertical;
+    width:100%; background:rgba(255,255,255,0.045); border:1px solid var(--border);
+    color:var(--text); padding:10px 12px; border-radius:11px; font-family:inherit; font-size:14px;
+    resize:vertical; outline:none;
   }
+  textarea:focus, select:focus{ border-color:var(--accent); }
   textarea{ min-height:50px; }
   input[type=range]{ width:100%; accent-color:var(--accent); }
   input[type=color]{
-    width:36px; height:32px; border:1px solid var(--border); border-radius:8px;
+    width:38px; height:34px; border:1px solid var(--border); border-radius:9px;
     background:none; padding:2px; cursor:pointer;
   }
   .range-row{ display:flex; align-items:center; gap:10px; }
@@ -112,45 +136,46 @@
   .three-col{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
   .chip-row{ display:flex; gap:8px; flex-wrap:wrap; }
   .chip{
-    display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.05);
-    border:1px solid var(--border); padding:6px 10px; border-radius:20px; font-size:12px; cursor:pointer;
+    display:flex; align-items:center; gap:6px; background:var(--glass);
+    border:1px solid var(--border); padding:7px 12px; border-radius:20px; font-size:12px; cursor:pointer;
+    font-weight:600;
   }
+  .chip:has(input:checked){ border-color:var(--accent); background:rgba(124,108,240,0.18); color:#fff; }
   .chip input{ margin:0; accent-color:var(--accent); }
   .chip.color-with{ padding-left:4px; }
   optgroup{ font-weight:700; }
-  hr.sep{ border:none; border-top:1px solid var(--border); margin:14px 0; }
+  hr.sep{ border:none; border-top:1px solid var(--border); margin:16px 0; }
   #fileInput{ display:none; }
+  .section-title{ font-size:12px; font-weight:800; color:var(--text); margin:0 0 10px; display:flex; align-items:center; gap:6px; }
+  .hint-note{ color:var(--hint); font-size:11.5px; line-height:1.9; margin-top:14px; background:var(--glass); padding:10px 12px; border-radius:11px; border:1px solid var(--border); }
 </style>
 </head>
 <body>
 <div id="app">
   <header>
-    <h1>🖼️ ادیتور عکس و متن</h1>
+    <h1><span class="dot"></span>ادیتور عکس و متن</h1>
     <button class="save-btn" id="saveBtn">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
       ذخیره
     </button>
   </header>
 
   <div id="canvasWrap">
-    <div id="emptyHint">یک عکس اضافه کن یا مستقیم متن بذار روی بوم خاکستری ✨</div>
+    <div id="emptyHint">یک عکس اضافه کن یا مستقیم روی بوم متن بذار ✨</div>
     <canvas id="editor" width="1000" height="1000"></canvas>
+    <div id="loadingOverlay"><div class="spinner"></div><span>در حال دریافت عکس از تلگرام…</span></div>
   </div>
 
   <div id="panel"></div>
 
   <div id="toolbar">
-    <button class="tbtn" id="addImageBtn">
+    <button class="tbtn primary" id="addImageBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
       افزودن عکس
     </button>
-    <button class="tbtn" id="addTextBtn">
+    <button class="tbtn primary" id="addTextBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
       افزودن متن
-    </button>
-    <button class="tbtn" id="fitImageBtn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-      برازش عکس
     </button>
   </div>
   <input type="file" id="fileInput" accept="image/*">
@@ -479,12 +504,10 @@
     fileInput.value = '';
   });
 
-  document.getElementById('fitImageBtn').addEventListener('click', ()=>{
-    const l = layers.find(x=>x.type==='image');
-    if(!l) return;
+  function fitImageLayer(l){
     l.x=canvas.width/2; l.y=canvas.height/2; l.width=canvas.width; l.height=canvas.height; l.rotation=0;
     draw();
-  });
+  }
 
   // ---------- Add text ----------
   document.getElementById('addTextBtn').addEventListener('click', ()=>{
@@ -523,6 +546,9 @@
       <div class="panel-head">
         <b>🖼️ عکس پس‌زمینه</b>
         <div class="panel-head-actions">
+          <button class="icon-btn" id="fitBtn" title="برازش با بوم">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+          </button>
           <button class="icon-btn" id="deselectBtn">✕</button>
         </div>
       </div>
@@ -530,9 +556,10 @@
         <label>شفافیت</label>
         <div class="range-row"><input type="range" id="opRange" min="0" max="100" value="${Math.round((l.opacity??1)*100)}"><span id="opVal">${Math.round((l.opacity??1)*100)}%</span></div>
       </div>
-      <p style="color:var(--hint);font-size:12px;line-height:1.9">برای کشیدن عکس و دراز/پهن کردنش، لبه‌ها یا گوشه‌های کادر بنفش دور عکس روی بوم را با انگشت بکش. برای چرخش، دایره سبز بالای کادر را بکش.</p>
+      <div class="hint-note">برای دراز یا پهن کردن عکس، لبه‌ها یا گوشه‌های کادر بنفش را روی بوم بکش. دایرهٔ سبز بالای کادر برای چرخوندنشه.</div>
     `;
     panel.querySelector('#deselectBtn').onclick = ()=>{ selected=null; closePanel(); draw(); };
+    panel.querySelector('#fitBtn').onclick = ()=> fitImageLayer(l);
     panel.querySelector('#opRange').oninput = (e)=>{
       l.opacity = e.target.value/100;
       panel.querySelector('#opVal').textContent = e.target.value+'%';
@@ -616,7 +643,7 @@
         <div><label>شفافیت پس‌زمینه</label><input type="range" id="bgOpacity" min="0" max="100" value="${Math.round(l.bg.opacity*100)}"></div>
       </div>
 
-      <p style="color:var(--hint);font-size:12px;line-height:1.9;margin-top:14px">با کشیدن لبه‌های کادر بنفش دور متن، فونت را دراز یا پهن کن. دایره سبز = چرخش.</p>
+      <div class="hint-note">با کشیدن لبه‌های کادر بنفش دور متن، فونت رو دراز یا پهن کن. دایرهٔ سبز بالای کادر برای چرخوندنشه.</div>
     `;
 
     panel.querySelector('#deselectBtn').onclick = ()=>{ selected=null; closePanel(); draw(); };
@@ -724,8 +751,39 @@
     }catch(e){}
   }
 
+  // ---------- Auto-load photo sent in chat (file_id passed via URL) ----------
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  async function loadFromTelegramFile(fileId){
+    loadingOverlay.classList.add('show');
+    try{
+      const res = await fetch('/api/image?file_id=' + encodeURIComponent(fileId));
+      if(!res.ok) throw new Error('fetch failed');
+      const blob = await res.blob();
+      const img = new Image();
+      const url = URL.createObjectURL(blob);
+      await new Promise((resolve, reject)=>{
+        img.onload = resolve; img.onerror = reject; img.src = url;
+      });
+      fitCanvasToImage(img);
+      layers.unshift(makeImageLayer(img));
+      draw();
+      URL.revokeObjectURL(url);
+    }catch(e){
+      console.error('could not load telegram photo', e);
+    }finally{
+      loadingOverlay.classList.remove('show');
+    }
+  }
+
   // ---------- Init ----------
   draw();
+  (function initFromParams(){
+    try{
+      const params = new URLSearchParams(location.search);
+      const fileId = params.get('file_id');
+      if(fileId) loadFromTelegramFile(fileId);
+    }catch(e){}
+  })();
 })();
 </script>
 </body>
