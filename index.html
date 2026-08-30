@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>ادیتور عکس و متن</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&family=Lalezar&family=Amiri:ital,wght@0,400;0,700;1,400&family=Noto+Naskh+Arabic:wght@400;700&family=Noto+Kufi+Arabic:wght@400;700&family=Reem+Kufi:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Roboto:ital,wght@0,400;0,700;1,400&family=Montserrat:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:ital,wght@0,400;0,700;1,400&family=Pacifico&family=Bebas+Neue&family=Oswald:wght@400;700&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: var(--tg-theme-bg-color, #0f0f14);
+    --bg2: var(--tg-theme-secondary-bg-color, #17171f);
+    --text: var(--tg-theme-text-color, #f2f2f7);
+    --hint: var(--tg-theme-hint-color, #8b8b96);
+    --accent: var(--tg-theme-button-color, #6c5ce7);
+    --accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --border: rgba(255,255,255,0.09);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Vazirmatn', sans-serif;
+    overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  #app{ display:flex; flex-direction:column; height:100%; }
+
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; border-bottom:1px solid var(--border);
+    background:var(--bg2); flex-shrink:0;
+  }
+  header h1{ font-size:15px; margin:0; font-weight:700; }
+  .save-btn{
+    background:var(--accent); color:var(--accent-text); border:none;
+    padding:8px 16px; border-radius:10px; font-family:inherit; font-size:13px;
+    font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;
+  }
+  .save-btn:active{ transform:scale(0.96); }
+
+  #canvasWrap{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    overflow:hidden; padding:10px; min-height:0; position:relative;
+    background:
+      linear-gradient(45deg,#20202a 25%,transparent 25%,transparent 75%,#20202a 75%),
+      linear-gradient(45deg,#20202a 25%,transparent 25%,transparent 75%,#20202a 75%);
+    background-size:20px 20px; background-position:0 0,10px 10px;
+  }
+  #editor{
+    max-width:100%; max-height:100%;
+    touch-action:none; border-radius:6px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.5);
+    background:#333;
+  }
+  #emptyHint{
+    position:absolute; text-align:center; color:var(--hint); font-size:13px;
+    pointer-events:none; padding:0 30px; line-height:2;
+  }
+
+  #toolbar{
+    display:flex; gap:8px; padding:10px 12px; background:var(--bg2);
+    border-top:1px solid var(--border); flex-shrink:0; overflow-x:auto;
+  }
+  .tbtn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text);
+    padding:9px 6px; border-radius:12px; font-family:inherit; font-size:11px; cursor:pointer;
+    min-width:64px;
+  }
+  .tbtn:active{ background:rgba(255,255,255,0.1); }
+  .tbtn svg{ width:20px; height:20px; }
+
+  #panel{
+    background:var(--bg2); border-top:1px solid var(--border);
+    max-height:46vh; overflow-y:auto; flex-shrink:0;
+    display:none; padding:12px 14px 18px;
+  }
+  #panel.open{ display:block; }
+  .panel-head{
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;
+  }
+  .panel-head b{ font-size:13px; }
+  .panel-head-actions{ display:flex; gap:8px; }
+  .icon-btn{
+    background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text);
+    width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .icon-btn.danger{ color:#ff6b6b; }
+  .row{ margin-bottom:12px; }
+  .row label{
+    display:block; font-size:11px; color:var(--hint); margin-bottom:5px; font-weight:600;
+  }
+  textarea, select, input[type=text]{
+    width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--border);
+    color:var(--text); padding:9px 10px; border-radius:9px; font-family:inherit; font-size:14px;
+    resize:vertical;
+  }
+  textarea{ min-height:50px; }
+  input[type=range]{ width:100%; accent-color:var(--accent); }
+  input[type=color]{
+    width:36px; height:32px; border:1px solid var(--border); border-radius:8px;
+    background:none; padding:2px; cursor:pointer;
+  }
+  .range-row{ display:flex; align-items:center; gap:10px; }
+  .range-row span{ font-size:11px; color:var(--hint); min-width:32px; text-align:left; }
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .three-col{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .chip-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chip{
+    display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.05);
+    border:1px solid var(--border); padding:6px 10px; border-radius:20px; font-size:12px; cursor:pointer;
+  }
+  .chip input{ margin:0; accent-color:var(--accent); }
+  .chip.color-with{ padding-left:4px; }
+  optgroup{ font-weight:700; }
+  hr.sep{ border:none; border-top:1px solid var(--border); margin:14px 0; }
+  #fileInput{ display:none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>🖼️ ادیتور عکس و متن</h1>
+    <button class="save-btn" id="saveBtn">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      ذخیره
+    </button>
+  </header>
+
+  <div id="canvasWrap">
+    <div id="emptyHint">یک عکس اضافه کن یا مستقیم متن بذار روی بوم خاکستری ✨</div>
+    <canvas id="editor" width="1000" height="1000"></canvas>
+  </div>
+
+  <div id="panel"></div>
+
+  <div id="toolbar">
+    <button class="tbtn" id="addImageBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+      افزودن عکس
+    </button>
+    <button class="tbtn" id="addTextBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+      افزودن متن
+    </button>
+    <button class="tbtn" id="fitImageBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      برازش عکس
+    </button>
+  </div>
+  <input type="file" id="fileInput" accept="image/*">
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ---------- Telegram integration ----------
+  let tg = null;
+  try{
+    tg = window.Telegram && window.Telegram.WebApp;
+    if(tg){
+      tg.ready();
+      tg.expand();
+      if(tg.setHeaderColor) try{ tg.setHeaderColor('secondary_bg_color'); }catch(e){}
+    }
+  }catch(e){}
+
+  // ---------- Fonts ----------
+  const FONTS = {
+    'فارسی / عربی': ['Vazirmatn','Lalezar','Amiri','Noto Naskh Arabic','Noto Kufi Arabic','Reem Kufi','Aref Ruqaa'],
+    'English': ['Roboto','Montserrat','Playfair Display','Poppins','Pacifico','Bebas Neue','Oswald','Dancing Script']
+  };
+
+  // ---------- Canvas setup ----------
+  const canvas = document.getElementById('editor');
+  const ctx = canvas.getContext('2d');
+  const wrap = document.getElementById('canvasWrap');
+  const emptyHint = document.getElementById('emptyHint');
+  const MAX_DIM = 1400;
+
+  let layers = []; // bottom -> top
+  let selected = null;
+  let idCounter = 1;
+
+  function uid(){ return 'l'+(idCounter++); }
+
+  // ---------- Layer helpers ----------
+  function makeTextLayer(text){
+    return {
+      id: uid(), type:'text', text: text || 'متن جدید',
+      x: canvas.width/2, y: canvas.height/2,
+      width: 320, height: 90,
+      baseFontSize: 64,
+      fontFamily: 'Vazirmatn', bold:true, italic:false,
+      color:'#ffffff', align:'center', rotation:0, opacity:1,
+      outline:{ enabled:false, color:'#000000', width:6 },
+      shadow:{ enabled:true, color:'#000000', blur:14, offsetX:0, offsetY:3 },
+      bg:{ enabled:false, color:'#000000', opacity:0.4 }
+    };
+  }
+  function makeImageLayer(img){
+    return {
+      id: uid(), type:'image', img,
+      x: canvas.width/2, y: canvas.height/2,
+      width: canvas.width, height: canvas.height,
+      rotation:0, opacity:1
+    };
+  }
+
+  function fitCanvasToImage(img){
+    const oldW = canvas.width, oldH = canvas.height;
+    let w = img.naturalWidth, h = img.naturalHeight;
+    const scale = Math.min(1, MAX_DIM / Math.max(w,h));
+    w = Math.round(w*scale); h = Math.round(h*scale);
+    canvas.width = w; canvas.height = h;
+    const rx = w/oldW, ry = h/oldH;
+    layers.forEach(l=>{
+      if(l.type==='text'){
+        l.x*=rx; l.y*=ry; l.width*=rx; l.height*=ry; l.baseFontSize*= (rx+ry)/2;
+      }
+    });
+  }
+
+  // ---------- Text measuring ----------
+  function fontString(l, size){
+    const style = l.italic ? 'italic ' : '';
+    const weight = l.bold ? '700 ' : '400 ';
+    return `${style}${weight}${size}px "${l.fontFamily}"`;
+  }
+  function measureNatural(l){
+    ctx.font = fontString(l, l.baseFontSize);
+    const lines = (l.text || '').split('\n');
+    let maxW = 1;
+    lines.forEach(ln=>{ maxW = Math.max(maxW, ctx.measureText(ln || ' ').width); });
+    const h = lines.length * l.baseFontSize * 1.3;
+    return { w: Math.max(maxW, 1), h: Math.max(h, 1), lines };
+  }
+
+  // ---------- Transform helpers (local <-> global, accounting rotation) ----------
+  function toLocal(px, py, l){
+    const dx = px - l.x, dy = py - l.y;
+    const cos = Math.cos(-l.rotation), sin = Math.sin(-l.rotation);
+    return { x: dx*cos - dy*sin, y: dx*sin + dy*cos };
+  }
+
+  // ---------- Drawing ----------
+  let exporting = false;
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#3a3a42';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    layers.forEach(l=>{
+      ctx.save();
+      ctx.globalAlpha = l.opacity != null ? l.opacity : 1;
+      ctx.translate(l.x, l.y);
+      ctx.rotate(l.rotation || 0);
+      if(l.type==='image'){
+        ctx.drawImage(l.img, -l.width/2, -l.height/2, l.width, l.height);
+      } else if(l.type==='text'){
+        drawTextLayer(l);
+      }
+      ctx.restore();
+    });
+
+    if(selected && !exporting){
+      drawSelection(selected);
+    }
+    emptyHint.style.display = layers.length ? 'none' : 'block';
+  }
+
+  function drawTextLayer(l){
+    const nat = measureNatural(l);
+    const scaleX = l.width / nat.w;
+    const scaleY = l.height / nat.h;
+
+    if(l.bg && l.bg.enabled){
+      ctx.save();
+      ctx.globalAlpha *= l.bg.opacity;
+      ctx.fillStyle = l.bg.color;
+      const pad = 16;
+      roundRect(-l.width/2-pad, -l.height/2-pad, l.width+pad*2, l.height+pad*2, 14);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.scale(scaleX, scaleY);
+    ctx.font = fontString(l, l.baseFontSize);
+    ctx.textAlign = l.align || 'center';
+    ctx.textBaseline = 'middle';
+
+    const lineH = l.baseFontSize * 1.3;
+    const startY = -((nat.lines.length-1)*lineH)/2;
+    const alignX = l.align==='left' ? -nat.w/2 : l.align==='right' ? nat.w/2 : 0;
+
+    if(l.shadow && l.shadow.enabled){
+      ctx.shadowColor = l.shadow.color;
+      ctx.shadowBlur = l.shadow.blur;
+      ctx.shadowOffsetX = l.shadow.offsetX;
+      ctx.shadowOffsetY = l.shadow.offsetY;
+    }
+
+    nat.lines.forEach((ln, i)=>{
+      const yy = startY + i*lineH;
+      if(l.outline && l.outline.enabled){
+        ctx.lineWidth = l.outline.width;
+        ctx.strokeStyle = l.outline.color;
+        ctx.lineJoin = 'round';
+        ctx.strokeText(ln, alignX, yy);
+      }
+      ctx.shadowColor = (l.shadow && l.shadow.enabled) ? l.shadow.color : 'transparent';
+      ctx.fillStyle = l.color;
+      ctx.fillText(ln, alignX, yy);
+    });
+  }
+
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function handlePositions(l){
+    const w=l.width/2, h=l.height/2;
+    return {
+      nw:{x:-w,y:-h}, n:{x:0,y:-h}, ne:{x:w,y:-h},
+      w:{x:-w,y:0},               e:{x:w,y:0},
+      sw:{x:-w,y:h}, s:{x:0,y:h}, se:{x:w,y:h},
+      rotate:{x:0,y:-h-34}
+    };
+  }
+
+  function drawSelection(l){
+    ctx.save();
+    ctx.translate(l.x, l.y);
+    ctx.rotate(l.rotation||0);
+    ctx.strokeStyle = '#6c5ce7';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6,5]);
+    ctx.strokeRect(-l.width/2, -l.height/2, l.width, l.height);
+    ctx.setLineDash([]);
+
+    const hp = handlePositions(l);
+    ctx.beginPath();
+    ctx.moveTo(hp.n.x, hp.n.y);
+    ctx.lineTo(hp.rotate.x, hp.rotate.y);
+    ctx.strokeStyle='#6c5ce7';
+    ctx.lineWidth=2;
+    ctx.stroke();
+
+    Object.keys(hp).forEach(key=>{
+      const p = hp[key];
+      ctx.beginPath();
+      if(key==='rotate'){
+        ctx.fillStyle = '#00d68f';
+        ctx.arc(p.x,p.y,9,0,Math.PI*2);
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.rect(p.x-7,p.y-7,14,14);
+      }
+      ctx.fill();
+      ctx.strokeStyle='#6c5ce7'; ctx.lineWidth=2; ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // ---------- Pointer interaction ----------
+  let drag = null; // {mode, layer, startPos, startLayer}
+
+  function getPos(evt){
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width/rect.width, sy = canvas.height/rect.height;
+    return { x:(evt.clientX-rect.left)*sx, y:(evt.clientY-rect.top)*sy };
+  }
+
+  function hitHandle(l, pos){
+    const local = toLocal(pos.x,pos.y,l);
+    const hp = handlePositions(l);
+    const R = Math.max(18, 22 * (canvas.width/ (canvas.getBoundingClientRect().width||canvas.width)) * 0.5);
+    for(const key of Object.keys(hp)){
+      const p = hp[key];
+      if(Math.hypot(local.x-p.x, local.y-p.y) < 26) return key;
+    }
+    return null;
+  }
+
+  canvas.addEventListener('pointerdown', (e)=>{
+    canvas.setPointerCapture(e.pointerId);
+    const pos = getPos(e);
+    let mode = null, layer = null;
+
+    if(selected){
+      const h = hitHandle(selected, pos);
+      if(h){ mode = h; layer = selected; }
+    }
+    if(!mode){
+      for(let i=layers.length-1;i>=0;i--){
+        const l = layers[i];
+        const local = toLocal(pos.x,pos.y,l);
+        if(Math.abs(local.x)<=l.width/2 && Math.abs(local.y)<=l.height/2){
+          layer = l; mode='move'; break;
+        }
+      }
+    }
+
+    if(layer){
+      selected = layer;
+      selectLayer(layer);
+      drag = {
+        mode, layer,
+        startPos:pos,
+        startLayer:{x:layer.x,y:layer.y,width:layer.width,height:layer.height,rotation:layer.rotation}
+      };
+    } else {
+      selected = null;
+      closePanel();
+    }
+    draw();
+  });
+
+  window.addEventListener('pointermove', (e)=>{
+    if(!drag) return;
+    e.preventDefault();
+    const pos = getPos(e);
+    const { mode, layer, startPos, startLayer } = drag;
+
+    if(mode==='move'){
+      layer.x = startLayer.x + (pos.x-startPos.x);
+      layer.y = startLayer.y + (pos.y-startPos.y);
+    } else if(mode==='rotate'){
+      layer.rotation = Math.atan2(pos.y-layer.y, pos.x-layer.x) + Math.PI/2;
+    } else {
+      const local = toLocal(pos.x,pos.y,layer);
+      const MIN = 24;
+      if(mode.includes('e') || mode.includes('w')){
+        layer.width = Math.max(MIN, Math.abs(local.x)*2);
+      }
+      if(mode.includes('n') || mode.includes('s')){
+        layer.height = Math.max(MIN, Math.abs(local.y)*2);
+      }
+    }
+    draw();
+    syncPanelValues();
+  }, {passive:false});
+
+  window.addEventListener('pointerup', ()=>{ drag = null; });
+  window.addEventListener('pointercancel', ()=>{ drag = null; });
+
+  // ---------- Add image ----------
+  const fileInput = document.getElementById('fileInput');
+  document.getElementById('addImageBtn').addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        fitCanvasToImage(img);
+        const existing = layers.find(l=>l.type==='image');
+        if(existing){ existing.img = img; existing.x=canvas.width/2; existing.y=canvas.height/2; existing.width=canvas.width; existing.height=canvas.height; existing.rotation=0; }
+        else { layers.unshift(makeImageLayer(img)); }
+        draw();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+  });
+
+  document.getElementById('fitImageBtn').addEventListener('click', ()=>{
+    const l = layers.find(x=>x.type==='image');
+    if(!l) return;
+    l.x=canvas.width/2; l.y=canvas.height/2; l.width=canvas.width; l.height=canvas.height; l.rotation=0;
+    draw();
+  });
+
+  // ---------- Add text ----------
+  document.getElementById('addTextBtn').addEventListener('click', ()=>{
+    const l = makeTextLayer('متن جدید');
+    layers.push(l);
+    selected = l;
+    selectLayer(l);
+    draw();
+  });
+
+  // ---------- Properties panel ----------
+  const panel = document.getElementById('panel');
+
+  function closePanel(){ panel.classList.remove('open'); panel.innerHTML=''; }
+
+  function fontOptions(current){
+    let html = '';
+    Object.keys(FONTS).forEach(group=>{
+      html += `<optgroup label="${group}">`;
+      FONTS[group].forEach(f=>{
+        html += `<option value="${f}" style="font-family:'${f}'" ${f===current?'selected':''}>${f}</option>`;
+      });
+      html += `</optgroup>`;
+    });
+    return html;
+  }
+
+  function selectLayer(l){
+    if(l.type==='text') renderTextPanel(l);
+    else renderImagePanel(l);
+    panel.classList.add('open');
+  }
+
+  function renderImagePanel(l){
+    panel.innerHTML = `
+      <div class="panel-head">
+        <b>🖼️ عکس پس‌زمینه</b>
+        <div class="panel-head-actions">
+          <button class="icon-btn" id="deselectBtn">✕</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>شفافیت</label>
+        <div class="range-row"><input type="range" id="opRange" min="0" max="100" value="${Math.round((l.opacity??1)*100)}"><span id="opVal">${Math.round((l.opacity??1)*100)}%</span></div>
+      </div>
+      <p style="color:var(--hint);font-size:12px;line-height:1.9">برای کشیدن عکس و دراز/پهن کردنش، لبه‌ها یا گوشه‌های کادر بنفش دور عکس روی بوم را با انگشت بکش. برای چرخش، دایره سبز بالای کادر را بکش.</p>
+    `;
+    panel.querySelector('#deselectBtn').onclick = ()=>{ selected=null; closePanel(); draw(); };
+    panel.querySelector('#opRange').oninput = (e)=>{
+      l.opacity = e.target.value/100;
+      panel.querySelector('#opVal').textContent = e.target.value+'%';
+      draw();
+    };
+  }
+
+  function renderTextPanel(l){
+    panel.innerHTML = `
+      <div class="panel-head">
+        <b>🔤 ویرایش متن</b>
+        <div class="panel-head-actions">
+          <button class="icon-btn danger" id="delBtn">🗑</button>
+          <button class="icon-btn" id="deselectBtn">✕</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>متن</label>
+        <textarea id="txtInput" dir="auto">${escapeHtml(l.text)}</textarea>
+      </div>
+
+      <div class="row">
+        <label>فونت</label>
+        <select id="fontSelect">${fontOptions(l.fontFamily)}</select>
+      </div>
+
+      <div class="row two-col">
+        <div>
+          <label>رنگ متن</label>
+          <input type="color" id="colorInput" value="${l.color}">
+        </div>
+        <div class="chip-row" style="align-items:flex-end">
+          <label class="chip"><input type="checkbox" id="boldChk" ${l.bold?'checked':''}> ضخیم</label>
+          <label class="chip"><input type="checkbox" id="italicChk" ${l.italic?'checked':''}> کج</label>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>ترازبندی</label>
+        <div class="chip-row">
+          <label class="chip"><input type="radio" name="align" value="right" ${l.align==='right'?'checked':''}> راست</label>
+          <label class="chip"><input type="radio" name="align" value="center" ${l.align==='center'?'checked':''}> وسط</label>
+          <label class="chip"><input type="radio" name="align" value="left" ${l.align==='left'?'checked':''}> چپ</label>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>شفافیت</label>
+        <div class="range-row"><input type="range" id="opRange" min="0" max="100" value="${Math.round(l.opacity*100)}"><span id="opVal">${Math.round(l.opacity*100)}%</span></div>
+      </div>
+
+      <div class="row">
+        <label>چرخش</label>
+        <div class="range-row"><input type="range" id="rotRange" min="-180" max="180" value="${Math.round((l.rotation||0)*180/Math.PI)}"><span id="rotVal">${Math.round((l.rotation||0)*180/Math.PI)}°</span></div>
+      </div>
+
+      <hr class="sep">
+
+      <div class="row">
+        <label class="chip" style="width:fit-content"><input type="checkbox" id="outlineChk" ${l.outline.enabled?'checked':''}> دور خط (Outline)</label>
+      </div>
+      <div class="row two-col" id="outlineOpts" style="${l.outline.enabled?'':'opacity:.4;pointer-events:none'}">
+        <div><label>رنگ</label><input type="color" id="outlineColor" value="${l.outline.color}"></div>
+        <div><label>ضخامت</label><input type="range" id="outlineWidth" min="1" max="20" value="${l.outline.width}"></div>
+      </div>
+
+      <div class="row">
+        <label class="chip" style="width:fit-content"><input type="checkbox" id="shadowChk" ${l.shadow.enabled?'checked':''}> سایه</label>
+      </div>
+      <div class="row two-col" id="shadowOpts" style="${l.shadow.enabled?'':'opacity:.4;pointer-events:none'}">
+        <div><label>رنگ</label><input type="color" id="shadowColor" value="${l.shadow.color}"></div>
+        <div><label>محو شدگی</label><input type="range" id="shadowBlur" min="0" max="40" value="${l.shadow.blur}"></div>
+      </div>
+
+      <div class="row">
+        <label class="chip" style="width:fit-content"><input type="checkbox" id="bgChk" ${l.bg.enabled?'checked':''}> پس‌زمینه پشت متن</label>
+      </div>
+      <div class="row two-col" id="bgOpts" style="${l.bg.enabled?'':'opacity:.4;pointer-events:none'}">
+        <div><label>رنگ</label><input type="color" id="bgColor" value="${l.bg.color}"></div>
+        <div><label>شفافیت پس‌زمینه</label><input type="range" id="bgOpacity" min="0" max="100" value="${Math.round(l.bg.opacity*100)}"></div>
+      </div>
+
+      <p style="color:var(--hint);font-size:12px;line-height:1.9;margin-top:14px">با کشیدن لبه‌های کادر بنفش دور متن، فونت را دراز یا پهن کن. دایره سبز = چرخش.</p>
+    `;
+
+    panel.querySelector('#deselectBtn').onclick = ()=>{ selected=null; closePanel(); draw(); };
+    panel.querySelector('#delBtn').onclick = ()=>{
+      layers = layers.filter(x=>x.id!==l.id);
+      selected=null; closePanel(); draw();
+    };
+    panel.querySelector('#txtInput').oninput = (e)=>{ l.text = e.target.value; draw(); };
+    panel.querySelector('#fontSelect').onchange = (e)=>{ l.fontFamily = e.target.value; draw(); };
+    panel.querySelector('#colorInput').oninput = (e)=>{ l.color = e.target.value; draw(); };
+    panel.querySelector('#boldChk').onchange = (e)=>{ l.bold = e.target.checked; draw(); };
+    panel.querySelector('#italicChk').onchange = (e)=>{ l.italic = e.target.checked; draw(); };
+    panel.querySelectorAll('input[name=align]').forEach(r=>{
+      r.onchange = (e)=>{ l.align = e.target.value; draw(); };
+    });
+    panel.querySelector('#opRange').oninput = (e)=>{
+      l.opacity = e.target.value/100;
+      panel.querySelector('#opVal').textContent = e.target.value+'%';
+      draw();
+    };
+    panel.querySelector('#rotRange').oninput = (e)=>{
+      l.rotation = e.target.value * Math.PI/180;
+      panel.querySelector('#rotVal').textContent = e.target.value+'°';
+      draw();
+    };
+
+    const outlineOpts = panel.querySelector('#outlineOpts');
+    panel.querySelector('#outlineChk').onchange = (e)=>{
+      l.outline.enabled = e.target.checked;
+      outlineOpts.style.opacity = e.target.checked?1:.4;
+      outlineOpts.style.pointerEvents = e.target.checked?'auto':'none';
+      draw();
+    };
+    panel.querySelector('#outlineColor').oninput = (e)=>{ l.outline.color=e.target.value; draw(); };
+    panel.querySelector('#outlineWidth').oninput = (e)=>{ l.outline.width=+e.target.value; draw(); };
+
+    const shadowOpts = panel.querySelector('#shadowOpts');
+    panel.querySelector('#shadowChk').onchange = (e)=>{
+      l.shadow.enabled = e.target.checked;
+      shadowOpts.style.opacity = e.target.checked?1:.4;
+      shadowOpts.style.pointerEvents = e.target.checked?'auto':'none';
+      draw();
+    };
+    panel.querySelector('#shadowColor').oninput = (e)=>{ l.shadow.color=e.target.value; draw(); };
+    panel.querySelector('#shadowBlur').oninput = (e)=>{ l.shadow.blur=+e.target.value; draw(); };
+
+    const bgOpts = panel.querySelector('#bgOpts');
+    panel.querySelector('#bgChk').onchange = (e)=>{
+      l.bg.enabled = e.target.checked;
+      bgOpts.style.opacity = e.target.checked?1:.4;
+      bgOpts.style.pointerEvents = e.target.checked?'auto':'none';
+      draw();
+    };
+    panel.querySelector('#bgColor').oninput = (e)=>{ l.bg.color=e.target.value; draw(); };
+    panel.querySelector('#bgOpacity').oninput = (e)=>{ l.bg.opacity=e.target.value/100; draw(); };
+  }
+
+  function syncPanelValues(){
+    // lightweight sync for rotation slider while dragging rotate handle
+    if(!selected || selected.type!=='text') return;
+    const rot = panel.querySelector('#rotRange');
+    const rotVal = panel.querySelector('#rotVal');
+    if(rot){
+      const deg = Math.round((selected.rotation||0)*180/Math.PI);
+      rot.value = deg; if(rotVal) rotVal.textContent = deg+'°';
+    }
+  }
+
+  function escapeHtml(s){
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ---------- Save / export ----------
+  async function exportPNG(){
+    const wasSelected = selected;
+    selected = null; exporting = true;
+    draw();
+    canvas.toBlob(async (blob)=>{
+      exporting = false; selected = wasSelected; draw();
+      if(!blob) return;
+      const file = new File([blob], 'edited-image.png', {type:'image/png'});
+
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        try{
+          await navigator.share({ files:[file], title:'عکس ادیت‌شده' });
+          return;
+        }catch(e){ /* user cancelled or unsupported, fall back below */ }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'edited-image.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    }, 'image/png');
+  }
+
+  document.getElementById('saveBtn').addEventListener('click', exportPNG);
+
+  if(tg && tg.MainButton){
+    try{
+      tg.MainButton.setText('ذخیره عکس');
+      tg.MainButton.show();
+      tg.MainButton.onClick(exportPNG);
+    }catch(e){}
+  }
+
+  // ---------- Init ----------
+  draw();
+})();
+</script>
+</body>
+</html>
