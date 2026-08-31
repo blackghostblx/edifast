@@ -1,8 +1,9 @@
 // Reliable "save" path: verifies the Mini App's initData (per Telegram's official
-// HMAC scheme) and pushes the edited image into the user's own chat with the bot.
-// This works from inside Telegram's WebView even where <a download> or Web Share fail.
+// HMAC scheme) and pushes the edited image (or a short silent GIF-style video of it)
+// into the user's own chat with the bot. This works from inside Telegram's WebView
+// even where <a download> or Web Share fail.
 //
-// POST /api/deliver   body: { initData: string, image: "data:image/png;base64,..." }
+// POST /api/deliver   body: { initData: string, image?: "data:image/png;base64,...", video?: "base64 webm" }
 // Requires env var: BOT_TOKEN
 
 const { validateInitData, langFor } = require('../lib/telegram');
@@ -10,6 +11,7 @@ const { kvGet, kvSet, zIncrBy } = require('../lib/storage');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const MAX_BYTES = 4.3 * 1024 * 1024; // ~4.5MB request-body ceiling on Vercel serverless functions
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -18,8 +20,8 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { initData, image } = req.body || {};
-    if (!initData || !image) {
+    const { initData, image, video } = req.body || {};
+    if (!initData || (!image && !video)) {
       res.status(400).json({ ok: false, error: 'missing fields' });
       return;
     }
@@ -30,11 +32,30 @@ module.exports = async (req, res) => {
       return;
     }
 
+    if (video) {
+      const base64 = video.includes(',') ? video.split(',')[1] : video;
+      const buf = Buffer.from(base64, 'base64');
+      if (buf.byteLength > MAX_BYTES) {
+        res.status(413).json({ ok: false, error: 'video too large' });
+        return;
+      }
+      const form = new FormData();
+      form.append('chat_id', String(user.id));
+      form.append('animation', new Blob([buf], { type: 'video/webm' }), 'edifast.webm');
+
+      const tgRes = await fetch(`${API}/sendAnimation`, { method: 'POST', body: form });
+      const data = await tgRes.json();
+      if (!data.ok) {
+        res.status(502).json({ ok: false, error: data.description || 'telegram error' });
+        return;
+      }
+      res.status(200).json({ ok: true });
+      return;
+    }
+
     const base64 = image.includes(',') ? image.split(',')[1] : image;
     const buf = Buffer.from(base64, 'base64');
-
-    // ~4.5MB request-body ceiling on Vercel serverless functions
-    if (buf.byteLength > 4.3 * 1024 * 1024) {
+    if (buf.byteLength > MAX_BYTES) {
       res.status(413).json({ ok: false, error: 'image too large' });
       return;
     }
