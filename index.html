@@ -171,14 +171,128 @@
   .chip input{ margin:0; accent-color:var(--accent); }
   optgroup{ font-weight:700; }
   hr.sep{ border:none; border-top:1px solid var(--border); margin:16px 0; }
-  #fileInput, #stickerInput{ display:none; }
+  #fileInput, #stickerInput, #homeUploadInput{ display:none; }
   .section-title{ font-size:12px; font-weight:800; color:var(--text); margin:0 0 10px; }
   .hint-note{ color:var(--hint); font-size:11.5px; line-height:1.9; margin-top:14px; background:var(--glass); padding:10px 12px; border-radius:11px; border:1px solid var(--border); }
+
+  /* ---------- Home screen ---------- */
+  #home{ display:flex; flex-direction:column; height:100%; overflow-y:auto; }
+  #home.hidden, #app.hidden{ display:none; }
+  .home-topbar{
+    direction:ltr; display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px; flex-shrink:0;
+  }
+  .home-logo{
+    width:34px; height:34px; border-radius:50%; overflow:hidden; flex-shrink:0;
+    background:var(--bg2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .home-logo img{ width:100%; height:100%; object-fit:cover; }
+  .home-topbar-actions{ display:flex; gap:8px; }
+  .home-topbar-actions .icon-toggle{ border-radius:50%; width:34px; height:34px; }
+
+  .home-body{ padding:4px 16px 24px; display:flex; flex-direction:column; gap:16px; flex:1; }
+
+  .profile-card{
+    direction:ltr; display:flex; align-items:center; gap:14px;
+    background:var(--bg2); border:1px solid var(--border); border-radius:18px;
+    padding:14px; cursor:pointer; text-align:left;
+  }
+  .profile-card:active{ transform:scale(0.98); }
+  .avatar{
+    width:58px; height:58px; border-radius:50%; flex-shrink:0; position:relative;
+    background:var(--glass); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .avatar img{ width:100%; height:100%; object-fit:cover; }
+  .avatar svg{ width:28px; height:28px; color:var(--hint); }
+  .avatar-plus{
+    position:absolute; bottom:-2px; right:-2px; width:20px; height:20px; border-radius:50%;
+    background:linear-gradient(135deg,var(--accent),#5b4bd6); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900;
+    border:2px solid var(--bg2);
+  }
+  .profile-info{ flex:1; min-width:0; }
+  .profile-name{ font-size:15px; font-weight:800; direction:rtl; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .profile-username{ font-size:12px; color:var(--hint); direction:ltr; text-align:right; margin-top:2px; }
+  .profile-edits{
+    margin-top:8px; display:inline-flex; align-items:center; gap:5px;
+    background:var(--glass); border:1px solid var(--border); border-radius:20px;
+    padding:4px 10px; font-size:11.5px; font-weight:700; direction:rtl;
+  }
+
+  .leaderboard-card{
+    background:var(--bg2); border:1px solid var(--border); border-radius:18px; padding:14px;
+  }
+  .leaderboard-title{ font-size:13px; font-weight:800; margin:0 0 12px; display:flex; align-items:center; gap:6px; }
+  .lb-row{ direction:ltr; display:flex; align-items:center; gap:10px; padding:8px 0; }
+  .lb-row + .lb-row{ border-top:1px solid var(--border); }
+  .lb-rank{ width:20px; text-align:center; font-size:14px; font-weight:900; flex-shrink:0; }
+  .lb-avatar{ width:36px; height:36px; border-radius:50%; overflow:hidden; flex-shrink:0; background:var(--glass); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; }
+  .lb-avatar img{ width:100%; height:100%; object-fit:cover; }
+  .lb-avatar svg{ width:18px; height:18px; color:var(--hint); }
+  .lb-info{ flex:1; min-width:0; direction:rtl; text-align:right; }
+  .lb-name{ font-size:12.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lb-count{ font-size:11px; color:var(--hint); }
+  .lb-empty{ color:var(--hint); font-size:12px; text-align:center; padding:10px 0; }
+
+  .new-edit-btn{
+    margin-top:auto; background:linear-gradient(135deg,var(--accent),#5b4bd6); color:var(--accent-text);
+    border:none; padding:15px; border-radius:16px; font-family:inherit; font-size:14.5px; font-weight:800;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
+    box-shadow:0 8px 22px rgba(124,108,240,0.35);
+  }
+  .new-edit-btn:active{ transform:scale(0.97); }
+
+  .back-btn{
+    background:var(--glass); border:1px solid var(--border); color:var(--text);
+    width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0;
+  }
+  .back-btn:active{ transform:scale(0.92); }
 </style>
 </head>
 <body>
-<div id="app">
+<div id="home">
+  <div class="home-topbar">
+    <div class="home-logo"><img src="/logo.png" alt="Edifast"></div>
+    <div class="home-topbar-actions">
+      <button class="icon-toggle" id="homeThemeBtn">🌓</button>
+      <button class="icon-toggle" id="homeLangBtn">FA</button>
+    </div>
+  </div>
+
+  <div class="home-body">
+    <div class="profile-card" id="profileCard">
+      <div class="avatar" id="profileAvatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        <div class="avatar-plus">+</div>
+      </div>
+      <div class="profile-info">
+        <div class="profile-name" id="profileName">…</div>
+        <div class="profile-username" id="profileUsername"></div>
+        <div class="profile-edits"><span data-i18n="edits_label">تعداد ادیت‌ها</span>: <span id="profileEditCount">0</span></div>
+      </div>
+    </div>
+
+    <div class="leaderboard-card">
+      <p class="leaderboard-title">🏆 <span data-i18n="leaderboard_title">برترین ادیتورها</span></p>
+      <div id="leaderboardList"><div class="lb-empty" data-i18n="leaderboard_empty">هنوز کسی ادیتی نزده</div></div>
+    </div>
+
+    <button class="new-edit-btn" id="newEditBtn">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      <span data-i18n="new_edit">ادیت جدید</span>
+    </button>
+  </div>
+</div>
+<input type="file" id="homeUploadInput" accept="image/*">
+
+<div id="app" class="hidden">
   <header>
+    <button class="back-btn" id="backBtn">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
     <h1><span class="dot"></span><span data-i18n="title">ادیتور عکس و متن</span></h1>
     <button class="icon-toggle" id="langBtn">FA</button>
     <button class="icon-toggle" id="themeBtn">🌓</button>
@@ -264,7 +378,9 @@
       crop_title:'✂️ برش تصویر', crop_hint:'کادر رو تنظیم کن؛ هر چی بیرونش باشه حذف می‌شه.',
       crop_confirm:'تأیید برش', crop_cancel:'انصراف',
       no_image_alert:'اول یه عکس اضافه کن.', default_text:'متن جدید', delete:'حذف',
-      saved_to_chat:'عکس تو چتت با ربات ذخیره شد ✅', saved_fallback:'دانلود شد'
+      saved_to_chat:'عکس تو چتت با ربات ذخیره شد ✅', saved_fallback:'دانلود شد',
+      edits_label:'تعداد ادیت‌ها', edits_suffix:'ادیت', leaderboard_title:'برترین ادیتورها', leaderboard_empty:'هنوز کسی ادیتی نزده',
+      new_edit:'ادیت جدید', anonymous:'کاربر'
     },
     en:{
       title:'Photo & Text Editor', save:'Save',
@@ -286,7 +402,9 @@
       crop_title:'✂️ Crop photo', crop_hint:'Adjust the frame — anything outside it gets removed.',
       crop_confirm:'Confirm crop', crop_cancel:'Cancel',
       no_image_alert:'Add a photo first.', default_text:'New text', delete:'Delete',
-      saved_to_chat:'Saved to your chat with the bot ✅', saved_fallback:'Downloaded'
+      saved_to_chat:'Saved to your chat with the bot ✅', saved_fallback:'Downloaded',
+      edits_label:'Edits', edits_suffix:'edits', leaderboard_title:'Top editors', leaderboard_empty:'No edits yet',
+      new_edit:'New edit', anonymous:'User'
     }
   };
   let currentLang = 'fa';
@@ -308,30 +426,38 @@
     document.documentElement.lang = currentLang;
     document.documentElement.dir = currentLang==='fa' ? 'rtl' : 'ltr';
     document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.dataset.i18n); });
-    document.getElementById('langBtn').textContent = currentLang==='fa' ? 'EN' : 'FA';
+    const langLabel = currentLang==='fa' ? 'EN' : 'FA';
+    document.getElementById('langBtn').textContent = langLabel;
+    document.getElementById('homeLangBtn').textContent = langLabel;
     if(tg && tg.MainButton){ try{ tg.MainButton.setText(t('save')); }catch(e){} }
     if(selected){ selectLayer(selected); }
     else if(cropMode){ renderCropPanel(); }
   }
-  document.getElementById('langBtn').addEventListener('click', ()=>{
+  function toggleLang(){
     currentLang = currentLang==='fa' ? 'en' : 'fa';
     localStorage.setItem('edifast_lang', currentLang);
     applyI18n();
-  });
+  }
+  document.getElementById('langBtn').addEventListener('click', toggleLang);
+  document.getElementById('homeLangBtn').addEventListener('click', toggleLang);
 
   // ---------- Theme (auto = Telegram, or manual override) ----------
   function applyTheme(){
     const saved = localStorage.getItem('edifast_theme');
     if(saved==='light' || saved==='dark'){ document.documentElement.dataset.theme = saved; }
     else{ delete document.documentElement.dataset.theme; }
-    document.getElementById('themeBtn').textContent = saved==='light' ? '☀️' : saved==='dark' ? '🌙' : '🌓';
+    const icon = saved==='light' ? '☀️' : saved==='dark' ? '🌙' : '🌓';
+    document.getElementById('themeBtn').textContent = icon;
+    document.getElementById('homeThemeBtn').textContent = icon;
   }
-  document.getElementById('themeBtn').addEventListener('click', ()=>{
+  function toggleTheme(){
     const cur = localStorage.getItem('edifast_theme') || 'auto';
     const next = cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
     if(next==='auto') localStorage.removeItem('edifast_theme'); else localStorage.setItem('edifast_theme', next);
     applyTheme();
-  });
+  }
+  document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+  document.getElementById('homeThemeBtn').addEventListener('click', toggleTheme);
   applyTheme();
 
   // ---------- Fonts ----------
@@ -1087,8 +1213,107 @@
   }
   document.getElementById('saveBtn').addEventListener('click', exportPNG);
   if(tg && tg.MainButton){
-    try{ tg.MainButton.setText(t('save')); tg.MainButton.show(); tg.MainButton.onClick(exportPNG); }catch(e){}
+    try{ tg.MainButton.setText(t('save')); tg.MainButton.onClick(exportPNG); }catch(e){}
   }
+
+  // ---------- Home screen / navigation ----------
+  const homeScreen = document.getElementById('home');
+  const appScreen = document.getElementById('app');
+  function personSvg(){
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>';
+  }
+  function showHome(){
+    appScreen.classList.add('hidden');
+    homeScreen.classList.remove('hidden');
+    if(tg && tg.MainButton){ try{ tg.MainButton.hide(); }catch(e){} }
+    refreshProfile();
+    refreshLeaderboard();
+  }
+  function showEditor(){
+    homeScreen.classList.add('hidden');
+    appScreen.classList.remove('hidden');
+    if(tg && tg.MainButton){ try{ tg.MainButton.show(); }catch(e){} }
+    resizeCanvasToContainer();
+    draw();
+  }
+  function resetEditor(){
+    layers = []; selected = null; cropMode = false; cropLayer = null;
+    panel.classList.remove('open'); panel.innerHTML = '';
+    draw();
+  }
+  document.getElementById('backBtn').addEventListener('click', showHome);
+  document.getElementById('newEditBtn').addEventListener('click', ()=>{
+    resetEditor();
+    showEditor();
+  });
+
+  let myProfile = null;
+  async function refreshProfile(){
+    const nameEl = document.getElementById('profileName');
+    const userEl = document.getElementById('profileUsername');
+    const editsEl = document.getElementById('profileEditCount');
+    const avatarEl = document.getElementById('profileAvatar');
+    if(!(tg && tg.initData)){
+      nameEl.textContent = t('anonymous');
+      userEl.textContent = '';
+      editsEl.textContent = '0';
+      return;
+    }
+    try{
+      const res = await fetch('/api/profile', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ initData: tg.initData })
+      });
+      const data = await res.json();
+      if(data.ok){
+        myProfile = data.profile;
+        nameEl.textContent = data.profile.name || t('anonymous');
+        userEl.textContent = data.profile.username ? '@'+data.profile.username : '';
+        editsEl.textContent = data.edits || 0;
+        if(data.profile.photo_url){
+          avatarEl.innerHTML = '<img src="'+data.profile.photo_url+'" alt="">'+'<div class="avatar-plus">+</div>';
+        }
+      }
+    }catch(e){ console.error('profile fetch failed', e); }
+  }
+
+  async function refreshLeaderboard(){
+    const list = document.getElementById('leaderboardList');
+    try{
+      const res = await fetch('/api/leaderboard');
+      const data = await res.json();
+      if(!data.ok || !data.leaderboard || !data.leaderboard.length){
+        list.innerHTML = '<div class="lb-empty">'+escapeHtml(t('leaderboard_empty'))+'</div>';
+        return;
+      }
+      const medals = ['🥇','🥈','🥉'];
+      list.innerHTML = data.leaderboard.map((u,i)=>{
+        const avatar = u.photo_url ? '<img src="'+u.photo_url+'" alt="">' : personSvg();
+        const name = escapeHtml(u.name || (u.username?'@'+u.username:'') || t('anonymous'));
+        return '<div class="lb-row">'
+          + '<div class="lb-rank">'+(medals[i]||(i+1))+'</div>'
+          + '<div class="lb-avatar">'+avatar+'</div>'
+          + '<div class="lb-info"><div class="lb-name">'+name+'</div><div class="lb-count">'+u.edits+' '+escapeHtml(t('edits_suffix'))+'</div></div>'
+          + '</div>';
+      }).join('');
+    }catch(e){
+      console.error('leaderboard fetch failed', e);
+      list.innerHTML = '<div class="lb-empty">'+escapeHtml(t('leaderboard_empty'))+'</div>';
+    }
+  }
+
+  // Tapping the avatar/profile card jumps straight into a new edit with a device photo.
+  document.getElementById('profileCard').addEventListener('click', ()=>{
+    document.getElementById('homeUploadInput').click();
+  });
+  document.getElementById('homeUploadInput').addEventListener('change', (e)=>{
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    resetEditor();
+    showEditor();
+    loadImageFile(file, addBackgroundImage);
+  });
 
   // ---------- Auto-load photo sent in chat ----------
   async function loadFromTelegramFile(fileId){
@@ -1108,16 +1333,21 @@
 
   // ---------- Init ----------
   currentLang = detectLang();
-  resizeCanvasToContainer();
   applyI18n();
-  draw();
   if(tg && tg.onEvent){ try{ tg.onEvent('themeChanged', ()=>draw()); }catch(e){} }
-  (function initFromParams(){
+  (function initRoute(){
+    // Coming from "edit this photo" in the chat -> jump straight into the editor.
+    // Otherwise (plain /start) -> land on the home screen first.
     try{
       const params = new URLSearchParams(location.search);
       const fileId = params.get('file_id');
-      if(fileId) loadFromTelegramFile(fileId);
+      if(fileId){
+        showEditor();
+        loadFromTelegramFile(fileId);
+        return;
+      }
     }catch(e){}
+    showHome();
   })();
 })();
 </script>
