@@ -6,9 +6,15 @@
 // Requires env var: BOT_TOKEN
 
 const crypto = require('crypto');
+const { kvGet } = require('../lib/storage');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+
+function langFor(user) {
+  const code = ((user && user.language_code) || '').toLowerCase();
+  return code.startsWith('fa') ? 'fa' : 'en';
+}
 
 function validateInitData(initData) {
   const params = new URLSearchParams(initData);
@@ -71,6 +77,17 @@ module.exports = async (req, res) => {
     if (!data.ok) {
       res.status(502).json({ ok: false, error: data.description || 'telegram error' });
       return;
+    }
+
+    // Owner-configured "delivered" sticker, sent after the edited image.
+    const lang = langFor(user);
+    const sticker = await kvGet(`sticker:send_${lang}`);
+    if (sticker) {
+      await fetch(`${API}/sendSticker`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: user.id, sticker }),
+      });
     }
 
     res.status(200).json({ ok: true });
