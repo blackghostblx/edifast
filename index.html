@@ -1174,8 +1174,28 @@
   async function exportPNG(){
     const wasSelected = selected;
     selected = null; exporting = true;
+
+    // Render the export at the photo's real resolution instead of whatever
+    // size the screen happened to draw the canvas at, so the output isn't
+    // downscaled/upscaled or cropped to an unrelated device aspect ratio.
+    const curW = canvas.width, curH = canvas.height;
+    const bg = layers.find(l=>l.role==='background');
+    let targetW = curW, targetH = curH;
+    if(bg && bg.img && bg.width){
+      const nativeScale = bg.img.naturalWidth / bg.width;
+      targetW = Math.round(curW * nativeScale);
+      targetH = Math.round(curH * nativeScale);
+    }
+    const MAX_EXPORT = 2400, MIN_EXPORT = 800;
+    const longEdge = Math.max(targetW, targetH);
+    if(longEdge > MAX_EXPORT){ const s = MAX_EXPORT/longEdge; targetW = Math.round(targetW*s); targetH = Math.round(targetH*s); }
+    else if(longEdge < MIN_EXPORT){ const s = MIN_EXPORT/longEdge; targetW = Math.round(targetW*s); targetH = Math.round(targetH*s); }
+    const resized = (targetW !== curW || targetH !== curH);
+    if(resized) rescaleCanvas(targetW, targetH);
     draw();
+
     canvas.toBlob(async (blob)=>{
+      if(resized) rescaleCanvas(curW, curH);
       exporting = false; selected = wasSelected; draw();
       if(!blob) return;
 
