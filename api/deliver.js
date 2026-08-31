@@ -11,7 +11,7 @@
 // Requires env var: BOT_TOKEN
 
 const { validateInitData, langFor } = require('../lib/telegram');
-const { kvGet, kvSet, zIncrBy } = require('../lib/storage');
+const { kvGet, kvSet, zIncrBy, lpush, ltrim } = require('../lib/storage');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
@@ -101,6 +101,17 @@ module.exports = async (req, res) => {
       }
     } catch (e) {
       console.error('edit-count update failed', e);
+    }
+
+    // Save it into the user's "my edits" library, most recent first (last 30 kept).
+    try {
+      const fileId = data.result && data.result.document && data.result.document.file_id;
+      if (fileId) {
+        await lpush(`history:${user.id}`, JSON.stringify({ file_id: fileId, type: 'image', ts: Date.now() }));
+        await ltrim(`history:${user.id}`, 0, 29);
+      }
+    } catch (e) {
+      console.error('history push failed', e);
     }
 
     res.status(200).json({ ok: true });
