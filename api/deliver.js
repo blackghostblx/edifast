@@ -5,40 +5,11 @@
 // POST /api/deliver   body: { initData: string, image: "data:image/png;base64,..." }
 // Requires env var: BOT_TOKEN
 
-const crypto = require('crypto');
-const { kvGet } = require('../lib/storage');
+const { validateInitData, langFor } = require('../lib/telegram');
+const { kvGet, kvSet, zIncrBy } = require('../lib/storage');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
-
-function langFor(user) {
-  const code = ((user && user.language_code) || '').toLowerCase();
-  return code.startsWith('fa') ? 'fa' : 'en';
-}
-
-function validateInitData(initData) {
-  const params = new URLSearchParams(initData);
-  const hash = params.get('hash');
-  if (!hash) return null;
-  params.delete('hash');
-
-  const pairs = [];
-  for (const [k, v] of params.entries()) pairs.push(`${k}=${v}`);
-  pairs.sort();
-  const dataCheckString = pairs.join('\n');
-
-  const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
-  const computedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-  if (computedHash !== hash) return null;
-
-  const userStr = params.get('user');
-  if (!userStr) return null;
-  try {
-    return JSON.parse(userStr);
-  } catch (e) {
-    return null;
-  }
-}
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -53,7 +24,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const user = validateInitData(initData);
+    const user = validateInitData(initData, BOT_TOKEN);
     if (!user || !user.id) {
       res.status(401).json({ ok: false, error: 'invalid initData' });
       return;
@@ -88,6 +59,23 @@ module.exports = async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: user.id, sticker }),
       });
+    }
+
+    // Count this as one edit, for the home-screen profile card + leaderboard.
+    try {
+      await zIncrBy('edits_zset', 1, user.id);
+      const existing = await kvGet(`user:${user.id}`);
+      if (!existing) {
+        const profile = {
+          id: user.id,
+          name: [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || String(user.id),
+          username: user.username || '',
+          photo_url: user.photo_url || null,
+        };
+        await kvSet(`user:${user.id}`, JSON.stringify(profile));
+      }
+    } catch (e) {
+      console.error('edit-count update failed', e);
     }
 
     res.status(200).json({ ok: true });
