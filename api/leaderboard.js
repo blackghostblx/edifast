@@ -1,10 +1,14 @@
-// GET /api/leaderboard — top 3 users by edit count, for the home screen.
+// GET /api/leaderboard          — top 3 users by edit count, for the home screen.
+// GET /api/leaderboard?full=1   — every user with an edit, for the full leaderboard screen.
 
 const { kvGet, zRevRangeWithScores } = require('../lib/storage');
 
 module.exports = async (req, res) => {
   try {
-    const flat = await zRevRangeWithScores('edits_zset', 0, 2);
+    const isFull = req.query && req.query.full === '1';
+    const flat = isFull
+      ? await zRevRangeWithScores('edits_zset', 0, -1)
+      : await zRevRangeWithScores('edits_zset', 0, 2);
     const list = [];
     for (let i = 0; i < flat.length; i += 2) {
       const id = flat[i];
