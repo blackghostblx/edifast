@@ -1,9 +1,13 @@
 // Reliable "save" path: verifies the Mini App's initData (per Telegram's official
-// HMAC scheme) and pushes the edited image (or a short silent GIF-style video of it)
-// into the user's own chat with the bot. This works from inside Telegram's WebView
-// even where <a download> or Web Share fail.
+// HMAC scheme) and pushes the edited image (or a real GIF89a file of it) into the
+// user's own chat with the bot. This works from inside Telegram's WebView even
+// where <a download> or Web Share fail.
 //
-// POST /api/deliver   body: { initData: string, image?: "data:image/png;base64,...", video?: "base64 webm" }
+// Note: sendAnimation only renders inline as an animated GIF for actual GIF (or
+// H.264 mp4) files — a webm video gets delivered as a plain video attachment
+// instead, so the client always sends a real image/gif file here, not video.
+//
+// POST /api/deliver   body: { initData: string, image?: "data:image/png;base64,...", gif?: "base64 gif89a" }
 // Requires env var: BOT_TOKEN
 
 const { validateInitData, langFor } = require('../lib/telegram');
@@ -20,8 +24,8 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { initData, image, video } = req.body || {};
-    if (!initData || (!image && !video)) {
+    const { initData, image, gif } = req.body || {};
+    if (!initData || (!image && !gif)) {
       res.status(400).json({ ok: false, error: 'missing fields' });
       return;
     }
@@ -32,16 +36,16 @@ module.exports = async (req, res) => {
       return;
     }
 
-    if (video) {
-      const base64 = video.includes(',') ? video.split(',')[1] : video;
+    if (gif) {
+      const base64 = gif.includes(',') ? gif.split(',')[1] : gif;
       const buf = Buffer.from(base64, 'base64');
       if (buf.byteLength > MAX_BYTES) {
-        res.status(413).json({ ok: false, error: 'video too large' });
+        res.status(413).json({ ok: false, error: 'gif too large' });
         return;
       }
       const form = new FormData();
       form.append('chat_id', String(user.id));
-      form.append('animation', new Blob([buf], { type: 'video/webm' }), 'edifast.webm');
+      form.append('animation', new Blob([buf], { type: 'image/gif' }), 'edifast.gif');
 
       const tgRes = await fetch(`${API}/sendAnimation`, { method: 'POST', body: form });
       const data = await tgRes.json();
