@@ -5,14 +5,35 @@
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
-const WELCOME_TEXT =
-  '👋 <b>سلام، خوش اومدی!</b>\n\n' +
-  'با این ربات می‌تونی روی عکس‌هات متن فارسی یا انگلیسی بذاری، فونت و افکت انتخاب کنی، و خود متن یا عکس رو هرجور خواستی بکشی و شکلش رو تغییر بدی. 🎨\n\n' +
-  '📸 کافیه یه عکس برام بفرستی — بعد لینک ادیتور رو برات می‌فرستم که همون‌جا روش کار کنی.\n\n' +
-  'یا می‌تونی با یه بومِ خالی هم شروع کنی 👇';
+const STR = {
+  fa: {
+    welcome:
+      '👋 <b>سلام، خوش اومدی!</b>\n\n' +
+      'با این ربات می‌تونی روی عکس‌هات متن فارسی یا انگلیسی بذاری، فونت و افکت انتخاب کنی، و خود متن یا عکس رو هرجور خواستی بکشی و شکلش رو تغییر بدی. 🎨\n\n' +
+      '📸 کافیه یه عکس برام بفرستی — بعد لینک ادیتور رو برات می‌فرستم که همون‌جا روش کار کنی.\n\n' +
+      'یا می‌تونی با یه بومِ خالی هم شروع کنی 👇',
+    openEditor: '🎨 باز کردن ادیتور',
+    gotPhoto: '✅ عکس دریافت شد!\nبرای ویرایش، دکمهٔ زیر رو بزن 👇',
+    editPhoto: '✏️ ویرایش این عکس',
+    fallback: 'یه عکس برام بفرست تا بتونی ویرایشش کنی 🙂\nیا از دستور /start استفاده کن.',
+  },
+  en: {
+    welcome:
+      "👋 <b>Hey, welcome!</b>\n\n" +
+      "With this bot you can put Persian or English text on your photos, pick fonts and effects, and stretch or resize the text or the photo however you like. 🎨\n\n" +
+      "📸 Just send me a photo — I'll send back a link to the editor so you can work on it right there.\n\n" +
+      "Or start with a blank canvas 👇",
+    openEditor: '🎨 Open editor',
+    gotPhoto: '✅ Photo received!\nTap the button below to edit it 👇',
+    editPhoto: '✏️ Edit this photo',
+    fallback: "Send me a photo so you can edit it 🙂\nOr use /start.",
+  },
+};
 
-const GOT_PHOTO_TEXT = '✅ عکس دریافت شد!\nبرای ویرایش، دکمهٔ زیر رو بزن 👇';
-const FALLBACK_TEXT = 'یه عکس برام بفرست تا بتونی ویرایشش کنی 🙂\nیا از دستور /start استفاده کن.';
+function langFor(user) {
+  const code = ((user && user.language_code) || '').toLowerCase();
+  return code.startsWith('fa') ? 'fa' : 'en';
+}
 
 function getAppUrl(req) {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, '');
@@ -22,12 +43,12 @@ function getAppUrl(req) {
 }
 
 async function tg(method, payload) {
-  const res = await fetch(`${API}/${method}`, {
+  const r = await fetch(`${API}/${method}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  return res.json();
+  return r.json();
 }
 
 function editorButton(text, url) {
@@ -47,31 +68,35 @@ module.exports = async (req, res) => {
     if (update.message) {
       const msg = update.message;
       const chatId = msg.chat.id;
+      const lang = langFor(msg.from);
+      const s = STR[lang];
+      // pass the user's Telegram language through so the mini app opens already matching it
+      const withLang = (url) => `${url}${url.includes('?') ? '&' : '?'}lang=${lang}`;
 
       if (msg.text && msg.text.startsWith('/start')) {
         await tg('sendMessage', {
           chat_id: chatId,
-          text: WELCOME_TEXT,
+          text: s.welcome,
           parse_mode: 'HTML',
-          reply_markup: editorButton('🎨 باز کردن ادیتور', appUrl),
+          reply_markup: editorButton(s.openEditor, withLang(appUrl)),
         });
       } else if (msg.photo && msg.photo.length) {
         const largest = msg.photo[msg.photo.length - 1];
-        const editUrl = `${appUrl}/?file_id=${encodeURIComponent(largest.file_id)}`;
+        const editUrl = withLang(`${appUrl}/?file_id=${encodeURIComponent(largest.file_id)}`);
         await tg('sendMessage', {
           chat_id: chatId,
-          text: GOT_PHOTO_TEXT,
-          reply_markup: editorButton('✏️ ویرایش این عکس', editUrl),
+          text: s.gotPhoto,
+          reply_markup: editorButton(s.editPhoto, editUrl),
         });
       } else if (msg.document && msg.document.mime_type && msg.document.mime_type.startsWith('image/')) {
-        const editUrl = `${appUrl}/?file_id=${encodeURIComponent(msg.document.file_id)}`;
+        const editUrl = withLang(`${appUrl}/?file_id=${encodeURIComponent(msg.document.file_id)}`);
         await tg('sendMessage', {
           chat_id: chatId,
-          text: GOT_PHOTO_TEXT,
-          reply_markup: editorButton('✏️ ویرایش این عکس', editUrl),
+          text: s.gotPhoto,
+          reply_markup: editorButton(s.editPhoto, editUrl),
         });
       } else {
-        await tg('sendMessage', { chat_id: chatId, text: FALLBACK_TEXT });
+        await tg('sendMessage', { chat_id: chatId, text: s.fallback });
       }
     }
   } catch (err) {
