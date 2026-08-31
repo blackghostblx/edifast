@@ -128,10 +128,14 @@
   .tbtn svg{ width:19px; height:19px; }
 
   #panel{
-    background:var(--bg2); border-top:1px solid var(--border);
-    max-height:44vh; overflow-y:auto; flex-shrink:0;
-    display:none; padding:14px 16px 20px;
+    position:absolute; left:10px; right:10px; bottom:10px; z-index:4;
+    background:rgba(21,21,29,0.94); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--border); border-radius:16px;
+    max-height:56%; overflow-y:auto;
+    display:none; padding:14px 16px 16px;
+    box-shadow:0 12px 34px rgba(0,0,0,0.4);
   }
+  html[data-theme="light"] #panel{ background:rgba(255,255,255,0.94); }
   #panel.open{ display:block; animation:slideUp .18s ease; }
   @keyframes slideUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
   .panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
@@ -174,6 +178,12 @@
   #fileInput, #stickerInput, #homeUploadInput{ display:none; }
   .section-title{ font-size:12px; font-weight:800; color:var(--text); margin:0 0 10px; }
   .hint-note{ color:var(--hint); font-size:11.5px; line-height:1.9; margin-top:14px; background:var(--glass); padding:10px 12px; border-radius:11px; border:1px solid var(--border); }
+  details.panel-group{ border:1px solid var(--border); border-radius:12px; margin-bottom:10px; background:var(--glass); overflow:hidden; }
+  details.panel-group summary{ padding:11px 12px; font-size:12.5px; font-weight:800; cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; }
+  details.panel-group summary::-webkit-details-marker{ display:none; }
+  details.panel-group summary::after{ content:'›'; color:var(--hint); font-size:16px; transform:rotate(90deg); transition:transform .15s ease; }
+  details.panel-group[open] summary::after{ transform:rotate(-90deg); }
+  details.panel-group .panel-group-body{ padding:2px 12px 14px; border-top:1px solid var(--border); }
 
   /* ---------- Home screen ---------- */
   #home{ display:flex; flex-direction:column; height:100%; overflow-y:auto; }
@@ -307,9 +317,8 @@
     <canvas id="editor" width="1000" height="1000"></canvas>
     <div id="loadingOverlay"><div class="spinner"></div><span data-i18n="loading">در حال دریافت عکس از تلگرام…</span></div>
     <div id="toast"></div>
+    <div id="panel"></div>
   </div>
-
-  <div id="panel"></div>
 
   <div id="toolbar">
     <button class="tbtn" id="addImageBtn">
@@ -335,6 +344,10 @@
     <button class="tbtn" id="resizeBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
       <span data-i18n="tb_resize">ابعاد</span>
+    </button>
+    <button class="tbtn" id="gifBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2.5"/><path d="M7 10v4M11 10v4M11 12h1.5"/><path d="M16.5 10a1.5 1.5 0 0 0-1.5 1.5v1a1.5 1.5 0 0 0 3 0"/></svg>
+      <span data-i18n="gif_btn">گیف</span>
     </button>
   </div>
   <input type="file" id="fileInput" accept="image/*">
@@ -380,7 +393,9 @@
       no_image_alert:'اول یه عکس اضافه کن.', default_text:'متن جدید', delete:'حذف',
       saved_to_chat:'عکس تو چتت با ربات ذخیره شد ✅', saved_fallback:'دانلود شد',
       edits_label:'تعداد ادیت‌ها', edits_suffix:'ادیت', leaderboard_title:'برترین ادیتورها', leaderboard_empty:'هنوز کسی ادیتی نزده',
-      new_edit:'ادیت جدید', anonymous:'کاربر'
+      new_edit:'ادیت جدید', anonymous:'کاربر',
+      group_text:'متن و ظاهر', group_transform:'اندازه و چرخش', group_opacity:'شفافیت',
+      gif_btn:'گیف', gif_making:'در حال ساخت گیف…', gif_sent:'گیف تو چتت ذخیره شد ✅', gif_error:'ساخت گیف با مشکل مواجه شد'
     },
     en:{
       title:'Photo & Text Editor', save:'Save',
@@ -404,7 +419,9 @@
       no_image_alert:'Add a photo first.', default_text:'New text', delete:'Delete',
       saved_to_chat:'Saved to your chat with the bot ✅', saved_fallback:'Downloaded',
       edits_label:'Edits', edits_suffix:'edits', leaderboard_title:'Top editors', leaderboard_empty:'No edits yet',
-      new_edit:'New edit', anonymous:'User'
+      new_edit:'New edit', anonymous:'User',
+      group_text:'Text & style', group_transform:'Size & rotation', group_opacity:'Opacity',
+      gif_btn:'GIF', gif_making:'Making GIF…', gif_sent:'Saved GIF to your chat ✅', gif_error:'Could not create the GIF'
     }
   };
   let currentLang = 'fa';
@@ -581,8 +598,6 @@
   // ---------- Drawing ----------
   function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = '#3a3a42';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
 
     ctx.save();
     ctx.beginPath();
@@ -1001,18 +1016,26 @@
           <button class="icon-btn" id="deselectBtn">✕</button>
         </div>
       </div>
-      <div class="row">
-        <label>${t('opacity')}</label>
-        <div class="range-row"><input type="range" id="opRange" min="0" max="100" value="${Math.round((l.opacity??1)*100)}"><span id="opVal">${Math.round((l.opacity??1)*100)}%</span></div>
-      </div>
-      <hr class="sep">
-      <div class="section-title">✨ ${t('effects_title')}</div>
-      <div class="row"><label>${t('brightness')}</label><div class="range-row"><input type="range" id="fBright" min="50" max="150" value="${l.filters.brightness}"><span>${l.filters.brightness}%</span></div></div>
-      <div class="row"><label>${t('contrast')}</label><div class="range-row"><input type="range" id="fContrast" min="50" max="150" value="${l.filters.contrast}"><span>${l.filters.contrast}%</span></div></div>
-      <div class="row"><label>${t('saturate')}</label><div class="range-row"><input type="range" id="fSaturate" min="0" max="200" value="${l.filters.saturate}"><span>${l.filters.saturate}%</span></div></div>
-      <div class="row"><label>${t('blur')}</label><div class="range-row"><input type="range" id="fBlur" min="0" max="10" value="${l.filters.blur}"><span>${l.filters.blur}px</span></div></div>
-      <div class="row"><label>${t('grayscale')}</label><div class="range-row"><input type="range" id="fGray" min="0" max="100" value="${l.filters.grayscale}"><span>${l.filters.grayscale}%</span></div></div>
-      <button class="chip" id="resetFilters">${t('reset')}</button>
+      <details class="panel-group" open>
+        <summary>${t('group_opacity')}</summary>
+        <div class="panel-group-body">
+          <div class="row">
+            <label>${t('opacity')}</label>
+            <div class="range-row"><input type="range" id="opRange" min="0" max="100" value="${Math.round((l.opacity??1)*100)}"><span id="opVal">${Math.round((l.opacity??1)*100)}%</span></div>
+          </div>
+        </div>
+      </details>
+      <details class="panel-group">
+        <summary>✨ ${t('effects_title')}</summary>
+        <div class="panel-group-body">
+          <div class="row"><label>${t('brightness')}</label><div class="range-row"><input type="range" id="fBright" min="50" max="150" value="${l.filters.brightness}"><span>${l.filters.brightness}%</span></div></div>
+          <div class="row"><label>${t('contrast')}</label><div class="range-row"><input type="range" id="fContrast" min="50" max="150" value="${l.filters.contrast}"><span>${l.filters.contrast}%</span></div></div>
+          <div class="row"><label>${t('saturate')}</label><div class="range-row"><input type="range" id="fSaturate" min="0" max="200" value="${l.filters.saturate}"><span>${l.filters.saturate}%</span></div></div>
+          <div class="row"><label>${t('blur')}</label><div class="range-row"><input type="range" id="fBlur" min="0" max="10" value="${l.filters.blur}"><span>${l.filters.blur}px</span></div></div>
+          <div class="row"><label>${t('grayscale')}</label><div class="range-row"><input type="range" id="fGray" min="0" max="100" value="${l.filters.grayscale}"><span>${l.filters.grayscale}%</span></div></div>
+          <button class="chip" id="resetFilters">${t('reset')}</button>
+        </div>
+      </details>
       ${isBg && bgEditMode ? `<div class="hint-note">${t('image_hint')}</div>` : ''}
       ${isBg && !bgEditMode ? `<div class="hint-note">${t('image_locked_hint')}</div>` : ''}
     `;
@@ -1053,41 +1076,69 @@
           <button class="icon-btn" id="deselectBtn">✕</button>
         </div>
       </div>
-      <div class="row"><label>${t('text_label')}</label><textarea id="txtInput" dir="auto">${escapeHtml(l.text)}</textarea></div>
-      <div class="row"><label>${t('font_label')}</label><select id="fontSelect">${fontOptions(l.fontFamily)}</select></div>
-      <div class="row two-col">
-        <div><label>${t('color_label')}</label><input type="color" id="colorInput" value="${l.color}"></div>
-        <div class="chip-row" style="align-items:flex-end">
-          <label class="chip"><input type="checkbox" id="boldChk" ${l.bold?'checked':''}> ${t('bold')}</label>
-          <label class="chip"><input type="checkbox" id="italicChk" ${l.italic?'checked':''}> ${t('italic')}</label>
+      <details class="panel-group" open>
+        <summary>${t('group_text')}</summary>
+        <div class="panel-group-body">
+          <div class="row"><label>${t('text_label')}</label><textarea id="txtInput" dir="auto">${escapeHtml(l.text)}</textarea></div>
+          <div class="row"><label>${t('font_label')}</label><select id="fontSelect">${fontOptions(l.fontFamily)}</select></div>
+          <div class="row two-col">
+            <div><label>${t('color_label')}</label><input type="color" id="colorInput" value="${l.color}"></div>
+            <div class="chip-row" style="align-items:flex-end">
+              <label class="chip"><input type="checkbox" id="boldChk" ${l.bold?'checked':''}> ${t('bold')}</label>
+              <label class="chip"><input type="checkbox" id="italicChk" ${l.italic?'checked':''}> ${t('italic')}</label>
+            </div>
+          </div>
+          <div class="row">
+            <label>${t('align_label')}</label>
+            <div class="chip-row">
+              <label class="chip"><input type="radio" name="align" value="right" ${l.align==='right'?'checked':''}> ${t('align_right')}</label>
+              <label class="chip"><input type="radio" name="align" value="center" ${l.align==='center'?'checked':''}> ${t('align_center')}</label>
+              <label class="chip"><input type="radio" name="align" value="left" ${l.align==='left'?'checked':''}> ${t('align_left')}</label>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="row">
-        <label>${t('align_label')}</label>
-        <div class="chip-row">
-          <label class="chip"><input type="radio" name="align" value="right" ${l.align==='right'?'checked':''}> ${t('align_right')}</label>
-          <label class="chip"><input type="radio" name="align" value="center" ${l.align==='center'?'checked':''}> ${t('align_center')}</label>
-          <label class="chip"><input type="radio" name="align" value="left" ${l.align==='left'?'checked':''}> ${t('align_left')}</label>
+      </details>
+
+      <details class="panel-group">
+        <summary>${t('group_transform')}</summary>
+        <div class="panel-group-body">
+          <div class="row"><label>${t('opacity')}</label><div class="range-row"><input type="range" id="opRange" min="0" max="100" value="${Math.round(l.opacity*100)}"><span id="opVal">${Math.round(l.opacity*100)}%</span></div></div>
+          <div class="row"><label>${t('rotation')}</label><div class="range-row"><input type="range" id="rotRange" min="-180" max="180" value="${Math.round((l.rotation||0)*180/Math.PI)}"><span id="rotVal">${Math.round((l.rotation||0)*180/Math.PI)}°</span></div></div>
         </div>
-      </div>
-      <div class="row"><label>${t('opacity')}</label><div class="range-row"><input type="range" id="opRange" min="0" max="100" value="${Math.round(l.opacity*100)}"><span id="opVal">${Math.round(l.opacity*100)}%</span></div></div>
-      <div class="row"><label>${t('rotation')}</label><div class="range-row"><input type="range" id="rotRange" min="-180" max="180" value="${Math.round((l.rotation||0)*180/Math.PI)}"><span id="rotVal">${Math.round((l.rotation||0)*180/Math.PI)}°</span></div></div>
-      <hr class="sep">
-      <div class="row"><label class="chip" style="width:fit-content"><input type="checkbox" id="outlineChk" ${l.outline.enabled?'checked':''}> ${t('outline')}</label></div>
-      <div class="row two-col" id="outlineOpts" style="${l.outline.enabled?'':'opacity:.4;pointer-events:none'}">
-        <div><label>${t('outline_color')}</label><input type="color" id="outlineColor" value="${l.outline.color}"></div>
-        <div><label>${t('outline_width')}</label><input type="range" id="outlineWidth" min="1" max="20" value="${l.outline.width}"></div>
-      </div>
-      <div class="row"><label class="chip" style="width:fit-content"><input type="checkbox" id="shadowChk" ${l.shadow.enabled?'checked':''}> ${t('shadow')}</label></div>
-      <div class="row two-col" id="shadowOpts" style="${l.shadow.enabled?'':'opacity:.4;pointer-events:none'}">
-        <div><label>${t('shadow_color')}</label><input type="color" id="shadowColor" value="${l.shadow.color}"></div>
-        <div><label>${t('shadow_blur')}</label><input type="range" id="shadowBlur" min="0" max="40" value="${l.shadow.blur}"></div>
-      </div>
-      <div class="row"><label class="chip" style="width:fit-content"><input type="checkbox" id="bgChk" ${l.bg.enabled?'checked':''}> ${t('bg_box')}</label></div>
-      <div class="row two-col" id="bgOpts" style="${l.bg.enabled?'':'opacity:.4;pointer-events:none'}">
-        <div><label>${t('bg_color')}</label><input type="color" id="bgColor" value="${l.bg.color}"></div>
-        <div><label>${t('bg_opacity')}</label><input type="range" id="bgOpacity" min="0" max="100" value="${Math.round(l.bg.opacity*100)}"></div>
-      </div>
+      </details>
+
+      <details class="panel-group">
+        <summary>${t('outline')}</summary>
+        <div class="panel-group-body">
+          <div class="row"><label class="chip" style="width:fit-content"><input type="checkbox" id="outlineChk" ${l.outline.enabled?'checked':''}> ${t('outline')}</label></div>
+          <div class="row two-col" id="outlineOpts" style="${l.outline.enabled?'':'opacity:.4;pointer-events:none'}">
+            <div><label>${t('outline_color')}</label><input type="color" id="outlineColor" value="${l.outline.color}"></div>
+            <div><label>${t('outline_width')}</label><input type="range" id="outlineWidth" min="1" max="20" value="${l.outline.width}"></div>
+          </div>
+        </div>
+      </details>
+
+      <details class="panel-group">
+        <summary>${t('shadow')}</summary>
+        <div class="panel-group-body">
+          <div class="row"><label class="chip" style="width:fit-content"><input type="checkbox" id="shadowChk" ${l.shadow.enabled?'checked':''}> ${t('shadow')}</label></div>
+          <div class="row two-col" id="shadowOpts" style="${l.shadow.enabled?'':'opacity:.4;pointer-events:none'}">
+            <div><label>${t('shadow_color')}</label><input type="color" id="shadowColor" value="${l.shadow.color}"></div>
+            <div><label>${t('shadow_blur')}</label><input type="range" id="shadowBlur" min="0" max="40" value="${l.shadow.blur}"></div>
+          </div>
+        </div>
+      </details>
+
+      <details class="panel-group">
+        <summary>${t('bg_box')}</summary>
+        <div class="panel-group-body">
+          <div class="row"><label class="chip" style="width:fit-content"><input type="checkbox" id="bgChk" ${l.bg.enabled?'checked':''}> ${t('bg_box')}</label></div>
+          <div class="row two-col" id="bgOpts" style="${l.bg.enabled?'':'opacity:.4;pointer-events:none'}">
+            <div><label>${t('bg_color')}</label><input type="color" id="bgColor" value="${l.bg.color}"></div>
+            <div><label>${t('bg_opacity')}</label><input type="range" id="bgOpacity" min="0" max="100" value="${Math.round(l.bg.opacity*100)}"></div>
+          </div>
+        </div>
+      </details>
       <div class="hint-note">${t('text_hint')}</div>
     `;
 
@@ -1232,6 +1283,58 @@
     }, 'image/png');
   }
   document.getElementById('saveBtn').addEventListener('click', exportPNG);
+
+  // ---------- GIF (2s silent video of the current canvas) ----------
+  async function makeGif(){
+    if(!layers.length){ alert(t('no_image_alert')); return; }
+    if(typeof canvas.captureStream !== 'function' || typeof window.MediaRecorder === 'undefined'){
+      alert(t('gif_error'));
+      return;
+    }
+    showToast(t('gif_making'));
+    try{
+      const stream = canvas.captureStream(15);
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
+                      : MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8'
+                      : 'video/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      const chunks = [];
+      recorder.ondataavailable = (e)=>{ if(e.data && e.data.size) chunks.push(e.data); };
+      const stopped = new Promise(resolve=>{ recorder.onstop = resolve; });
+      recorder.start();
+      // The canvas content itself is static, so keep re-drawing each frame
+      // to make sure the captured stream actually has 2 seconds of frames.
+      const frameTimer = setInterval(draw, 100);
+      setTimeout(()=>{ recorder.stop(); clearInterval(frameTimer); }, 2000);
+      await stopped;
+
+      const blob = new Blob(chunks, { type:'video/webm' });
+      const reader = new FileReader();
+      reader.onload = async ()=>{
+        const base64 = String(reader.result).split(',')[1];
+        if(tg && tg.initData){
+          try{
+            const res = await fetch('/api/deliver', {
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ initData: tg.initData, video: base64 })
+            });
+            const data = await res.json();
+            if(data.ok){ showToast(t('gif_sent')); return; }
+          }catch(e){ console.error('gif deliver failed', e); }
+        }
+        // Fallback outside Telegram (or if delivery failed): plain download.
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'edifast.webm'; a.click();
+        setTimeout(()=>URL.revokeObjectURL(url), 2000);
+      };
+      reader.readAsDataURL(blob);
+    }catch(e){
+      console.error('gif creation failed', e);
+      alert(t('gif_error'));
+    }
+  }
+  document.getElementById('gifBtn').addEventListener('click', makeGif);
   if(tg && tg.MainButton){
     try{ tg.MainButton.setText(t('save')); tg.MainButton.onClick(exportPNG); }catch(e){}
   }
