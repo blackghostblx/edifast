@@ -1,9 +1,29 @@
 // Telegram webhook handler — deploy on Vercel as /api/webhook
 // Requires env var: BOT_TOKEN
 // Optional env var: APP_URL (e.g. https://edifast.vercel.app) — otherwise inferred from request host
+//
+// Admin mode: the very first person who ever sends /start is remembered as
+// the owner (see lib/storage.js). Only that user can use the six sticker
+// commands below. Sending one of them arms "capture mode" — the next
+// sticker that admin sends is saved under that slot. The saved sticker is
+// then sent automatically at the matching moment for real users.
+
+const { kvGet, kvSet, kvDel } = require('../lib/storage');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+
+const ADMIN_ID_KEY = 'admin_id';
+
+// command text (as the owner types it) -> sticker slot name
+const ADMIN_COMMANDS = {
+  '/ورودفارسی': 'in_fa', // sent before the /start welcome text, Persian users
+  '/ورودانگلیسی': 'in_en', // sent before the /start welcome text, English users
+  '/دریافتفا': 'recv_fa', // sent after a Persian user uploads a photo
+  '/دریافتانگ': 'recv_en', // sent after an English user uploads a photo
+  '/ارسالفا': 'send_fa', // sent after the bot delivers the edited image, Persian users
+  '/ارسالانگ': 'send_en', // sent after the bot delivers the edited image, English users
+};
 
 const STR = {
   fa: {
@@ -68,12 +88,44 @@ module.exports = async (req, res) => {
     if (update.message) {
       const msg = update.message;
       const chatId = msg.chat.id;
+      const fromId = msg.from && msg.from.id;
       const lang = langFor(msg.from);
       const s = STR[lang];
       // pass the user's Telegram language through so the mini app opens already matching it
       const withLang = (url) => `${url}${url.includes('?') ? '&' : '?'}lang=${lang}`;
 
+      // The first-ever /start claims ownership; everyone after is a regular user.
+      let adminId = await kvGet(ADMIN_ID_KEY);
+      if (!adminId && msg.text && msg.text.startsWith('/start')) {
+        adminId = String(fromId);
+        await kvSet(ADMIN_ID_KEY, adminId);
+      }
+      const isAdmin = adminId && fromId && String(fromId) === String(adminId);
+
+      // Admin: /ورودفارسی etc. arm capture mode for the next sticker.
+      if (isAdmin && msg.text && ADMIN_COMMANDS[msg.text.trim()]) {
+        const slot = ADMIN_COMMANDS[msg.text.trim()];
+        await kvSet(`pending_sticker:${adminId}`, slot);
+        await tg('sendMessage', { chat_id: chatId, text: '🖼 حالا استیکر مورد نظر رو بفرست تا ذخیره بشه.' });
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      // Admin: a sticker arriving while capture mode is armed gets saved.
+      if (isAdmin && msg.sticker) {
+        const pendingSlot = await kvGet(`pending_sticker:${adminId}`);
+        if (pendingSlot) {
+          await kvSet(`sticker:${pendingSlot}`, msg.sticker.file_id);
+          await kvDel(`pending_sticker:${adminId}`);
+          await tg('sendMessage', { chat_id: chatId, text: '✅ استیکر ذخیره شد.' });
+          res.status(200).json({ ok: true });
+          return;
+        }
+      }
+
       if (msg.text && msg.text.startsWith('/start')) {
+        const sticker = await kvGet(`sticker:in_${lang}`);
+        if (sticker) await tg('sendSticker', { chat_id: chatId, sticker });
         await tg('sendMessage', {
           chat_id: chatId,
           text: s.welcome,
@@ -83,6 +135,8 @@ module.exports = async (req, res) => {
       } else if (msg.photo && msg.photo.length) {
         const largest = msg.photo[msg.photo.length - 1];
         const editUrl = withLang(`${appUrl}/?file_id=${encodeURIComponent(largest.file_id)}`);
+        const sticker = await kvGet(`sticker:recv_${lang}`);
+        if (sticker) await tg('sendSticker', { chat_id: chatId, sticker });
         await tg('sendMessage', {
           chat_id: chatId,
           text: s.gotPhoto,
@@ -90,6 +144,8 @@ module.exports = async (req, res) => {
         });
       } else if (msg.document && msg.document.mime_type && msg.document.mime_type.startsWith('image/')) {
         const editUrl = withLang(`${appUrl}/?file_id=${encodeURIComponent(msg.document.file_id)}`);
+        const sticker = await kvGet(`sticker:recv_${lang}`);
+        if (sticker) await tg('sendSticker', { chat_id: chatId, sticker });
         await tg('sendMessage', {
           chat_id: chatId,
           text: s.gotPhoto,
