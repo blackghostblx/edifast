@@ -128,12 +128,12 @@
   .tbtn svg{ width:19px; height:19px; }
 
   #panel{
-    position:absolute; left:10px; right:10px; bottom:10px; z-index:4;
-    background:rgba(21,21,29,0.94); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
-    border:1px solid var(--border); border-radius:16px;
-    max-height:56%; overflow-y:auto;
-    display:none; padding:14px 16px 16px;
-    box-shadow:0 12px 34px rgba(0,0,0,0.4);
+    position:absolute; left:0; right:0; bottom:0; z-index:4;
+    background:rgba(21,21,29,0.96); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--border); border-radius:18px 18px 0 0;
+    max-height:40%; overflow-y:auto;
+    display:none; padding:14px 16px calc(16px + env(safe-area-inset-bottom));
+    box-shadow:0 -8px 30px rgba(0,0,0,0.4);
   }
   html[data-theme="light"] #panel{ background:rgba(255,255,255,0.94); }
   #panel.open{ display:block; animation:slideUp .18s ease; }
@@ -178,12 +178,19 @@
   #fileInput, #stickerInput, #homeUploadInput{ display:none; }
   .section-title{ font-size:12px; font-weight:800; color:var(--text); margin:0 0 10px; }
   .hint-note{ color:var(--hint); font-size:11.5px; line-height:1.9; margin-top:14px; background:var(--glass); padding:10px 12px; border-radius:11px; border:1px solid var(--border); }
-  details.panel-group{ border:1px solid var(--border); border-radius:12px; margin-bottom:10px; background:var(--glass); overflow:hidden; }
-  details.panel-group summary{ padding:11px 12px; font-size:12.5px; font-weight:800; cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; }
-  details.panel-group summary::-webkit-details-marker{ display:none; }
-  details.panel-group summary::after{ content:'›'; color:var(--hint); font-size:16px; transform:rotate(90deg); transition:transform .15s ease; }
-  details.panel-group[open] summary::after{ transform:rotate(-90deg); }
-  details.panel-group .panel-group-body{ padding:2px 12px 14px; border-top:1px solid var(--border); }
+  .panel-tabs{
+    display:flex; gap:6px; overflow-x:auto; padding-bottom:10px; margin-bottom:12px;
+    border-bottom:1px solid var(--border); -webkit-overflow-scrolling:touch; scrollbar-width:none;
+  }
+  .panel-tabs::-webkit-scrollbar{ display:none; }
+  .panel-tab{
+    flex-shrink:0; background:var(--glass); border:1px solid var(--border); color:var(--hint);
+    padding:7px 14px; border-radius:20px; font-family:inherit; font-size:12px; font-weight:700;
+    cursor:pointer; white-space:nowrap;
+  }
+  .panel-tab.active{ background:linear-gradient(135deg,var(--accent),#5b4bd6); color:var(--accent-text); border-color:transparent; }
+  .panel-tab-panel{ display:none; }
+  .panel-tab-panel.active{ display:block; animation:slideUp .12s ease; }
 
   /* ---------- Home screen ---------- */
   #home{ display:flex; flex-direction:column; height:100%; overflow-y:auto; }
@@ -303,10 +310,10 @@
   #textActions{ position:absolute; inset:0; pointer-events:none; z-index:7; display:none; }
   #textActions.show{ display:block; }
   .ta-btn{
-    position:absolute; width:34px; height:34px; border-radius:50%;
+    position:absolute; width:26px; height:26px; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
     transform:translate(-50%,-50%);
-    border:2px solid #fff; color:#fff; font-size:15px; line-height:1;
+    border:2px solid #fff; color:#fff; font-size:12px; line-height:1;
     cursor:pointer; pointer-events:auto; box-shadow:0 3px 10px rgba(0,0,0,0.4);
   }
   .ta-btn:active{ transform:translate(-50%,-50%) scale(0.88); }
@@ -635,6 +642,19 @@
     return { width: img.naturalWidth*scale, height: img.naturalHeight*scale };
   }
 
+  // The background photo must always fully cover the canvas — otherwise the
+  // transparent/empty canvas shows through around it. Called after every
+  // move/resize/zoom of the background layer to floor its size and clamp its
+  // position so no edge of the frame is ever left uncovered.
+  function enforceBackgroundCover(l){
+    if(!l || l.role!=='background') return;
+    if(l.width < canvas.width) l.width = canvas.width;
+    if(l.height < canvas.height) l.height = canvas.height;
+    const hw = l.width/2, hh = l.height/2;
+    l.x = Math.min(Math.max(l.x, canvas.width-hw), hw);
+    l.y = Math.min(Math.max(l.y, canvas.height-hh), hh);
+  }
+
   // ---------- Layer helpers ----------
   function makeTextLayer(text){
     return {
@@ -653,6 +673,7 @@
     return {
       id: uid(), type:'image', role, img,
       x: canvas.width/2, y: canvas.height/2, width, height, rotation:0, opacity:1,
+      noRotate: role==='background', // the background photo doesn't tilt — keeps full-frame coverage simple
       filters:{ brightness:100, contrast:100, saturate:100, blur:0, grayscale:0 }
     };
   }
@@ -881,10 +902,10 @@
       const p = canvasPointToScreen(c.x, c.y);
       el.style.left = p.x+'px'; el.style.top = p.y+'px';
     };
-    place(taDelete, -w, -h);
-    place(taEdit, w, -h);
-    place(taRotate, -w, h);
-    place(taFlip, w, h);
+    place(taDelete, -w-12, -h-12);
+    place(taEdit, w+12, -h-12);
+    place(taRotate, -w-12, h+12);
+    place(taFlip, w+12, h+12);
   }
   function showTextActions(l){
     updateTextActionsPos(l);
@@ -1001,9 +1022,13 @@
       e.preventDefault();
       const pts = [...activePointers.values()];
       const dist = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
-      const scale = dist/pinchStartDist;
-      selected.width = Math.max(24, pinchStartSize.width*scale);
-      selected.height = Math.max(24, pinchStartSize.height*scale);
+      let scale = dist/pinchStartDist;
+      // Never let the pinch shrink the photo below full-frame coverage.
+      const minScale = Math.max(canvas.width/pinchStartSize.width, canvas.height/pinchStartSize.height, 0.05);
+      scale = Math.max(scale, minScale);
+      selected.width = pinchStartSize.width*scale;
+      selected.height = pinchStartSize.height*scale;
+      enforceBackgroundCover(selected);
       draw();
       return;
     }
@@ -1032,6 +1057,7 @@
       layer.x = Math.min(Math.max(layer.x,hw), canvas.width-hw);
       layer.y = Math.min(Math.max(layer.y,hh), canvas.height-hh);
     }
+    if(layer.role==='background') enforceBackgroundCover(layer);
 
     draw();
     syncPanelValues();
@@ -1146,6 +1172,24 @@
   // ---------- Properties panel ----------
   function closePanel(){ panel.classList.remove('open'); panel.innerHTML=''; }
 
+  // Renders a panel as a fixed head + a horizontally-scrollable strip of tabs
+  // (instead of one long vertically-scrolling list), so settings stay reachable
+  // without covering more of the canvas than necessary.
+  function buildTabbedPanel(headHtml, hintHtml, groups){
+    const tabs = groups.map((g,i)=>`<button type="button" class="panel-tab${i===0?' active':''}" data-idx="${i}">${g.label}</button>`).join('');
+    const bodies = groups.map((g,i)=>`<div class="panel-tab-panel${i===0?' active':''}" data-idx="${i}">${g.html}</div>`).join('');
+    return `${headHtml}<div class="panel-tabs">${tabs}</div><div class="panel-tab-body">${bodies}</div>${hintHtml||''}`;
+  }
+  function wireTabs(container){
+    const tabs = container.querySelectorAll('.panel-tab');
+    tabs.forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        tabs.forEach(b=>b.classList.toggle('active', b===btn));
+        container.querySelectorAll('.panel-tab-panel').forEach(p=>p.classList.toggle('active', p.dataset.idx===btn.dataset.idx));
+      });
+    });
+  }
+
   function fontOptions(current){
     let html = '';
     Object.keys(FONTS).forEach(group=>{
@@ -1191,26 +1235,31 @@
     // effects so the two tools don't get jumbled together anymore.
     if(isBg && bgEditMode){ renderResizePanel(l); return; }
 
-    panel.innerHTML = `
+    const head = `
       <div class="panel-head">
         <b>${isBg? '✨ '+t('effects_title') : t('sticker_panel_title')}</b>
         <div class="panel-head-actions">
           ${isBg ? '' : `<button class="icon-btn danger" id="delBtn">🗑</button>`}
           <button class="icon-btn" id="deselectBtn">✕</button>
         </div>
-      </div>
-      <div class="row">
-        <label>${t('opacity')}</label>
-        <div class="range-row"><input type="range" id="opRange" min="0" max="100" value="${Math.round((l.opacity??1)*100)}"><span id="opVal">${Math.round((l.opacity??1)*100)}%</span></div>
-      </div>
-      <hr class="sep">
-      <div class="row"><label>${t('brightness')}</label><div class="range-row"><input type="range" id="fBright" min="50" max="150" value="${l.filters.brightness}"><span>${l.filters.brightness}%</span></div></div>
-      <div class="row"><label>${t('contrast')}</label><div class="range-row"><input type="range" id="fContrast" min="50" max="150" value="${l.filters.contrast}"><span>${l.filters.contrast}%</span></div></div>
-      <div class="row"><label>${t('saturate')}</label><div class="range-row"><input type="range" id="fSaturate" min="0" max="200" value="${l.filters.saturate}"><span>${l.filters.saturate}%</span></div></div>
-      <div class="row"><label>${t('blur')}</label><div class="range-row"><input type="range" id="fBlur" min="0" max="10" value="${l.filters.blur}"><span>${l.filters.blur}px</span></div></div>
-      <div class="row"><label>${t('grayscale')}</label><div class="range-row"><input type="range" id="fGray" min="0" max="100" value="${l.filters.grayscale}"><span>${l.filters.grayscale}%</span></div></div>
-      <button class="chip" id="resetFilters">${t('reset')}</button>
-    `;
+      </div>`;
+    const groups = [
+      { label: t('group_opacity'), html:`
+        <div class="row">
+          <label>${t('opacity')}</label>
+          <div class="range-row"><input type="range" id="opRange" min="0" max="100" value="${Math.round((l.opacity??1)*100)}"><span id="opVal">${Math.round((l.opacity??1)*100)}%</span></div>
+        </div>` },
+      { label: '✨ '+t('effects_title'), html:`
+        <div class="row"><label>${t('brightness')}</label><div class="range-row"><input type="range" id="fBright" min="50" max="150" value="${l.filters.brightness}"><span>${l.filters.brightness}%</span></div></div>
+        <div class="row"><label>${t('contrast')}</label><div class="range-row"><input type="range" id="fContrast" min="50" max="150" value="${l.filters.contrast}"><span>${l.filters.contrast}%</span></div></div>
+        <div class="row"><label>${t('saturate')}</label><div class="range-row"><input type="range" id="fSaturate" min="0" max="200" value="${l.filters.saturate}"><span>${l.filters.saturate}%</span></div></div>
+        <div class="row"><label>${t('blur')}</label><div class="range-row"><input type="range" id="fBlur" min="0" max="10" value="${l.filters.blur}"><span>${l.filters.blur}px</span></div></div>
+        <div class="row"><label>${t('grayscale')}</label><div class="range-row"><input type="range" id="fGray" min="0" max="100" value="${l.filters.grayscale}"><span>${l.filters.grayscale}%</span></div></div>
+        <button class="chip" id="resetFilters">${t('reset')}</button>` },
+    ];
+    panel.innerHTML = buildTabbedPanel(head, '', groups);
+    wireTabs(panel);
+
     panel.querySelector('#deselectBtn').onclick = ()=>{ selected=null; bgEditMode=false; closePanel(); draw(); };
     if(!isBg) panel.querySelector('#delBtn').onclick = ()=>{ layers = layers.filter(x=>x.id!==l.id); selected=null; closePanel(); draw(); };
 
@@ -1262,17 +1311,16 @@
   }
 
   function renderTextPanel(l){
-    panel.innerHTML = `
+    const head = `
       <div class="panel-head">
         <b>${t('text_panel_title')}</b>
         <div class="panel-head-actions">
           <button class="icon-btn danger" id="delBtn">🗑</button>
           <button class="icon-btn" id="deselectBtn">✕</button>
         </div>
-      </div>
-      <details class="panel-group" open>
-        <summary>${t('group_text')}</summary>
-        <div class="panel-group-body">
+      </div>`;
+    const groups = [
+      { label: t('group_text'), html:`
           <div class="row"><label>${t('text_label')}</label><textarea id="txtInput" dir="auto">${escapeHtml(l.text)}</textarea></div>
           <div class="row"><label>${t('font_label')}</label><select id="fontSelect">${fontOptions(l.fontFamily)}</select></div>
           <div class="row two-col">
@@ -1289,52 +1337,32 @@
               <label class="chip"><input type="radio" name="align" value="center" ${l.align==='center'?'checked':''}> ${t('align_center')}</label>
               <label class="chip"><input type="radio" name="align" value="left" ${l.align==='left'?'checked':''}> ${t('align_left')}</label>
             </div>
-          </div>
-        </div>
-      </details>
-
-      <details class="panel-group">
-        <summary>${t('group_transform')}</summary>
-        <div class="panel-group-body">
+          </div>` },
+      { label: t('group_transform'), html:`
           <div class="row"><label>${t('opacity')}</label><div class="range-row"><input type="range" id="opRange" min="0" max="100" value="${Math.round(l.opacity*100)}"><span id="opVal">${Math.round(l.opacity*100)}%</span></div></div>
-          <div class="row"><label>${t('rotation')}</label><div class="range-row"><input type="range" id="rotRange" min="-180" max="180" value="${Math.round((l.rotation||0)*180/Math.PI)}"><span id="rotVal">${Math.round((l.rotation||0)*180/Math.PI)}°</span></div></div>
-        </div>
-      </details>
-
-      <details class="panel-group">
-        <summary>${t('outline')}</summary>
-        <div class="panel-group-body">
+          <div class="row"><label>${t('rotation')}</label><div class="range-row"><input type="range" id="rotRange" min="-180" max="180" value="${Math.round((l.rotation||0)*180/Math.PI)}"><span id="rotVal">${Math.round((l.rotation||0)*180/Math.PI)}°</span></div></div>` },
+      { label: t('outline'), html:`
           <div class="row"><label class="chip" style="width:fit-content"><input type="checkbox" id="outlineChk" ${l.outline.enabled?'checked':''}> ${t('outline')}</label></div>
           <div class="row two-col" id="outlineOpts" style="${l.outline.enabled?'':'opacity:.4;pointer-events:none'}">
             <div><label>${t('outline_color')}</label><input type="color" id="outlineColor" value="${l.outline.color}"></div>
             <div><label>${t('outline_width')}</label><input type="range" id="outlineWidth" min="1" max="20" value="${l.outline.width}"></div>
-          </div>
-        </div>
-      </details>
-
-      <details class="panel-group">
-        <summary>${t('shadow')}</summary>
-        <div class="panel-group-body">
+          </div>` },
+      { label: t('shadow'), html:`
           <div class="row"><label class="chip" style="width:fit-content"><input type="checkbox" id="shadowChk" ${l.shadow.enabled?'checked':''}> ${t('shadow')}</label></div>
           <div class="row two-col" id="shadowOpts" style="${l.shadow.enabled?'':'opacity:.4;pointer-events:none'}">
             <div><label>${t('shadow_color')}</label><input type="color" id="shadowColor" value="${l.shadow.color}"></div>
             <div><label>${t('shadow_blur')}</label><input type="range" id="shadowBlur" min="0" max="40" value="${l.shadow.blur}"></div>
-          </div>
-        </div>
-      </details>
-
-      <details class="panel-group">
-        <summary>${t('bg_box')}</summary>
-        <div class="panel-group-body">
+          </div>` },
+      { label: t('bg_box'), html:`
           <div class="row"><label class="chip" style="width:fit-content"><input type="checkbox" id="bgChk" ${l.bg.enabled?'checked':''}> ${t('bg_box')}</label></div>
           <div class="row two-col" id="bgOpts" style="${l.bg.enabled?'':'opacity:.4;pointer-events:none'}">
             <div><label>${t('bg_color')}</label><input type="color" id="bgColor" value="${l.bg.color}"></div>
             <div><label>${t('bg_opacity')}</label><input type="range" id="bgOpacity" min="0" max="100" value="${Math.round(l.bg.opacity*100)}"></div>
-          </div>
-        </div>
-      </details>
-      <div class="hint-note">${t('text_hint')}</div>
-    `;
+          </div>` },
+    ];
+    const hint = `<div class="hint-note">${t('text_hint')}</div>`;
+    panel.innerHTML = buildTabbedPanel(head, hint, groups);
+    wireTabs(panel);
 
     // Closing settings just goes back to the corner buttons (stays selected) —
     // it doesn't pop back up on its own and doesn't fully deselect the text.
