@@ -35,7 +35,9 @@ const STR = {
     openEditor: '🎨 باز کردن ادیتور',
     gotPhoto: '✅ عکس دریافت شد!\nبرای ویرایش، دکمهٔ زیر رو بزن 👇',
     editPhoto: '✏️ ویرایش این عکس',
-    fallback: 'یه عکس برام بفرست تا بتونی ویرایشش کنی 🙂\nیا از دستور /start استفاده کن.',
+    gotVideo: '✅ ویدیو دریافت شد!\nبرای ویرایش (برش دادن)، دکمهٔ زیر رو بزن 👇',
+    editVideo: '🎬 ویرایش این ویدیو',
+    fallback: 'یه عکس یا ویدیو برام بفرست تا بتونی ویرایشش کنی 🙂\nیا از دستور /start استفاده کن.',
   },
   en: {
     welcome:
@@ -46,7 +48,9 @@ const STR = {
     openEditor: '🎨 Open editor',
     gotPhoto: '✅ Photo received!\nTap the button below to edit it 👇',
     editPhoto: '✏️ Edit this photo',
-    fallback: "Send me a photo so you can edit it 🙂\nOr use /start.",
+    gotVideo: '✅ Video received!\nTap the button below to trim/edit it 👇',
+    editVideo: '🎬 Edit this video',
+    fallback: "Send me a photo or video so you can edit it 🙂\nOr use /start.",
   },
 };
 
@@ -150,6 +154,24 @@ module.exports = async (req, res) => {
           chat_id: chatId,
           text: s.gotPhoto,
           reply_markup: editorButton(s.editPhoto, editUrl),
+        });
+      } else if (msg.video) {
+        const editUrl = withLang(`${appUrl}/?video_file_id=${encodeURIComponent(msg.video.file_id)}`);
+        const sticker = await kvGet(`sticker:recv_${lang}`);
+        if (sticker) await tg('sendSticker', { chat_id: chatId, sticker });
+        await tg('sendMessage', {
+          chat_id: chatId,
+          text: s.gotVideo,
+          reply_markup: editorButton(s.editVideo, editUrl),
+        });
+      } else if (msg.document && msg.document.mime_type && msg.document.mime_type.startsWith('video/')) {
+        const editUrl = withLang(`${appUrl}/?video_file_id=${encodeURIComponent(msg.document.file_id)}`);
+        const sticker = await kvGet(`sticker:recv_${lang}`);
+        if (sticker) await tg('sendSticker', { chat_id: chatId, sticker });
+        await tg('sendMessage', {
+          chat_id: chatId,
+          text: s.gotVideo,
+          reply_markup: editorButton(s.editVideo, editUrl),
         });
       } else {
         await tg('sendMessage', { chat_id: chatId, text: s.fallback });
