@@ -47,18 +47,26 @@
   }
   header h1 .dot{ width:7px; height:7px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); flex-shrink:0; }
   .icon-toggle{
-    background:var(--glass); border:1px solid var(--border); color:var(--text);
+    background:linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
+    border:1px solid var(--border); color:var(--text);
     width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center;
     cursor:pointer; font-size:13px; flex-shrink:0; font-weight:700;
+    box-shadow:0 3px 0 rgba(0,0,0,0.28), 0 4px 10px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.12);
+    transition:transform .08s ease, box-shadow .08s ease;
   }
-  .icon-toggle:active{ transform:scale(0.92); }
+  html[data-theme="light"] .icon-toggle{
+    background:linear-gradient(180deg, rgba(255,255,255,0.9), rgba(0,0,0,0.02));
+    box-shadow:0 3px 0 rgba(0,0,0,0.10), 0 4px 10px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8);
+  }
+  .icon-toggle:active{ transform:translateY(2px); box-shadow:inset 0 2px 5px rgba(0,0,0,0.3); }
   .save-btn{
-    background:linear-gradient(135deg,var(--accent),#5b4bd6); color:var(--accent-text); border:none;
+    background:linear-gradient(180deg,var(--accent),#5b4bd6); color:var(--accent-text); border:none;
     padding:9px 16px; border-radius:11px; font-family:inherit; font-size:13px;
     font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px; flex-shrink:0;
-    box-shadow:0 4px 14px rgba(124,108,240,0.35);
+    box-shadow:0 3px 0 #4a3bb5, 0 6px 16px rgba(124,108,240,0.4), inset 0 1px 0 rgba(255,255,255,0.25);
+    transition:transform .08s ease, box-shadow .08s ease;
   }
-  .save-btn:active{ transform:scale(0.95); }
+  .save-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 #4a3bb5, inset 0 2px 6px rgba(0,0,0,0.2); }
 
   #canvasWrap{
     flex:1; display:flex; align-items:stretch; justify-content:stretch;
@@ -111,19 +119,20 @@
     scroll-snap-align:start; flex:0 0 auto; min-width:72px;
     display:flex; flex-direction:column; align-items:center; gap:6px;
     padding:10px 14px; border-radius:16px; font-family:inherit; font-size:11px; font-weight:700; cursor:pointer;
-    color:var(--text); background:linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
+    color:var(--text); background:linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
     border:1px solid var(--border);
-    box-shadow:0 2px 0 rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06);
-    transition:transform .08s ease;
+    box-shadow:0 4px 0 rgba(0,0,0,0.28), 0 6px 14px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.1);
+    transition:transform .08s ease, box-shadow .08s ease;
   }
   html[data-theme="light"] .tbtn{
-    background:linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01));
-    box-shadow:0 2px 0 rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.6);
+    background:linear-gradient(180deg, rgba(255,255,255,0.85), rgba(0,0,0,0.015));
+    box-shadow:0 4px 0 rgba(0,0,0,0.10), 0 6px 14px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.7);
   }
-  .tbtn:active{ transform:translateY(2px); box-shadow:inset 0 2px 5px rgba(0,0,0,0.3); }
+  .tbtn:active{ transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,0.2), inset 0 2px 5px rgba(0,0,0,0.3); }
   .tbtn.active{
     border-color:var(--accent); color:#fff;
-    background:linear-gradient(180deg, rgba(124,108,240,0.45), rgba(124,108,240,0.16));
+    background:linear-gradient(180deg, rgba(124,108,240,0.55), rgba(124,108,240,0.22));
+    box-shadow:0 4px 0 #4a3bb5, 0 6px 14px rgba(124,108,240,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
   }
   .tbtn svg{ width:19px; height:19px; }
 
@@ -142,11 +151,14 @@
   .panel-head b{ font-size:13.5px; font-weight:800; }
   .panel-head-actions{ display:flex; gap:8px; }
   .icon-btn{
-    background:var(--glass); border:1px solid var(--border); color:var(--text);
+    background:linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
+    border:1px solid var(--border); color:var(--text);
     width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center;
     cursor:pointer; font-size:14px;
+    box-shadow:0 3px 0 rgba(0,0,0,0.25), 0 4px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+    transition:transform .08s ease, box-shadow .08s ease;
   }
-  .icon-btn:active{ transform:scale(0.92); }
+  .icon-btn:active{ transform:translateY(2px); box-shadow:inset 0 2px 5px rgba(0,0,0,0.3); }
   .icon-btn.danger{ color:#ff6b7d; }
   .row{ margin-bottom:14px; }
   .row label{ display:block; font-size:11px; color:var(--hint); margin-bottom:6px; font-weight:700; }
@@ -184,11 +196,18 @@
   }
   .panel-tabs::-webkit-scrollbar{ display:none; }
   .panel-tab{
-    flex-shrink:0; background:var(--glass); border:1px solid var(--border); color:var(--hint);
+    flex-shrink:0; background:linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.02));
+    border:1px solid var(--border); color:var(--hint);
     padding:7px 14px; border-radius:20px; font-family:inherit; font-size:12px; font-weight:700;
     cursor:pointer; white-space:nowrap;
+    box-shadow:0 2px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
+    transition:transform .08s ease, box-shadow .08s ease;
   }
-  .panel-tab.active{ background:linear-gradient(135deg,var(--accent),#5b4bd6); color:var(--accent-text); border-color:transparent; }
+  .panel-tab:active{ transform:translateY(1px); }
+  .panel-tab.active{
+    background:linear-gradient(180deg,var(--accent),#5b4bd6); color:var(--accent-text); border-color:transparent;
+    box-shadow:0 2px 0 #4a3bb5, 0 4px 10px rgba(124,108,240,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
   .panel-tab-panel{ display:none; }
   .panel-tab-panel.active{ display:block; animation:slideUp .12s ease; }
 
@@ -245,11 +264,14 @@
   .leaderboard-head{ direction:ltr; display:flex; align-items:center; justify-content:space-between; margin:0 0 12px; }
   .leaderboard-title{ font-size:13px; font-weight:800; margin:0; display:flex; align-items:center; gap:6px; }
   .lb-arrow{
-    background:var(--glass); border:1px solid var(--border); color:var(--text);
+    background:linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
+    border:1px solid var(--border); color:var(--text);
     width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;
     cursor:pointer; flex-shrink:0;
+    box-shadow:0 3px 0 rgba(0,0,0,0.25), 0 4px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+    transition:transform .08s ease, box-shadow .08s ease;
   }
-  .lb-arrow:active{ transform:scale(0.92); }
+  .lb-arrow:active{ transform:translateY(2px); box-shadow:inset 0 2px 5px rgba(0,0,0,0.3); }
   .lb-row{ direction:ltr; display:flex; align-items:center; gap:10px; padding:8px 0; }
   .lb-row + .lb-row{ border-top:1px solid var(--border); }
   .lb-row.me{
@@ -269,13 +291,16 @@
 
   .type-row{ display:flex; gap:12px; direction:ltr; }
   .type-box{
-    flex:1; background:var(--bg2); border:1px solid var(--border); border-radius:16px;
+    flex:1; background:linear-gradient(180deg, rgba(255,255,255,0.07), var(--bg2));
+    border:1px solid var(--border); border-radius:16px;
     padding:16px 10px; display:flex; flex-direction:column; align-items:center; gap:8px;
     cursor:pointer; font-family:inherit; color:var(--text); font-size:12.5px; font-weight:800;
+    box-shadow:0 4px 0 rgba(0,0,0,0.22), 0 6px 14px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.1);
+    transition:transform .08s ease, box-shadow .08s ease;
   }
-  .type-box:active{ transform:scale(0.96); }
+  .type-box:active{ transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,0.18), inset 0 2px 5px rgba(0,0,0,0.25); }
   .type-box svg{ width:26px; height:26px; color:var(--accent); }
-  .type-box.soon{ opacity:0.55; }
+  .type-box.soon{ opacity:0.75; }
   .type-box .soon-tag{ font-size:10px; font-weight:700; color:var(--hint); }
 
   .library-card{ background:var(--bg2); border:1px solid var(--border); border-radius:18px; padding:14px; }
@@ -292,19 +317,82 @@
   }
 
   .new-edit-btn{
-    margin-top:auto; background:linear-gradient(135deg,var(--accent),#5b4bd6); color:var(--accent-text);
+    margin-top:auto; background:linear-gradient(180deg,var(--accent),#5b4bd6); color:var(--accent-text);
     border:none; padding:15px; border-radius:16px; font-family:inherit; font-size:14.5px; font-weight:800;
     cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
-    box-shadow:0 8px 22px rgba(124,108,240,0.35);
+    box-shadow:0 4px 0 #4a3bb5, 0 8px 22px rgba(124,108,240,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+    transition:transform .08s ease, box-shadow .08s ease;
   }
-  .new-edit-btn:active{ transform:scale(0.97); }
+  .new-edit-btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #4a3bb5, inset 0 2px 6px rgba(0,0,0,0.2); }
 
   .back-btn{
-    background:var(--glass); border:1px solid var(--border); color:var(--text);
+    background:linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
+    border:1px solid var(--border); color:var(--text);
     width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center;
     cursor:pointer; flex-shrink:0;
+    box-shadow:0 3px 0 rgba(0,0,0,0.25), 0 4px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+    transition:transform .08s ease, box-shadow .08s ease;
   }
-  .back-btn:active{ transform:scale(0.92); }
+  .back-btn:active{ transform:translateY(2px); box-shadow:inset 0 2px 5px rgba(0,0,0,0.3); }
+
+  /* ---------- Modal (video prompt) ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; z-index:50; background:rgba(0,0,0,0.6);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .modal-overlay.hidden{ display:none; }
+  .modal-card{
+    background:var(--bg2); border:1px solid var(--border); border-radius:20px;
+    padding:26px 22px 20px; max-width:300px; text-align:center;
+    box-shadow:0 20px 50px rgba(0,0,0,0.5);
+  }
+  .modal-icon{ font-size:34px; margin-bottom:10px; }
+  .modal-title{ font-size:15px; font-weight:800; margin:0 0 8px; }
+  .modal-text{ font-size:12.5px; color:var(--hint); line-height:1.9; margin:0 0 18px; }
+  .modal-actions{ display:flex; align-items:center; justify-content:center; gap:10px; }
+
+  /* ---------- Video editor ---------- */
+  #videoEditorScreen{ display:flex; flex-direction:column; height:100%; }
+  #videoEditorScreen.hidden{ display:none; }
+  #videoPreviewWrap{
+    flex:1; position:relative; display:flex; align-items:center; justify-content:center;
+    padding:14px; min-height:0; background:var(--bg);
+  }
+  #videoPreview{ max-width:100%; max-height:100%; border-radius:14px; box-shadow:0 20px 50px rgba(0,0,0,0.55); background:#000; }
+  #videoPlayToggle{
+    position:absolute; width:52px; height:52px; border-radius:50%; border:none;
+    background:rgba(0,0,0,0.55); color:#fff; display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  #videoPlayToggle.hide{ display:none; }
+  #videoTrimPanel{ background:var(--bg2); border-top:1px solid var(--border); padding:12px 16px calc(14px + env(safe-area-inset-bottom)); flex-shrink:0; }
+  .video-time-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+  .video-time-row span:first-child, .video-time-row span:last-child{ font-size:11.5px; font-weight:800; color:var(--hint); direction:ltr; flex-shrink:0; }
+  .video-time-row .hint-note{ font-size:10.5px; flex:1; text-align:center; }
+  .trim-wrap{ position:relative; height:28px; }
+  .trim-track-bg{
+    position:absolute; left:0; right:0; top:50%; height:6px; transform:translateY(-50%);
+    border-radius:6px; background:var(--glass); border:1px solid var(--border);
+  }
+  .trim-track-selected{
+    position:absolute; top:50%; height:6px; transform:translateY(-50%);
+    border-radius:6px; background:linear-gradient(90deg,var(--accent),#5b4bd6);
+  }
+  .trim-wrap input[type=range]{
+    position:absolute; left:0; right:0; top:0; width:100%; height:28px; margin:0;
+    background:transparent; appearance:none; -webkit-appearance:none; pointer-events:none;
+  }
+  .trim-wrap input[type=range]::-webkit-slider-runnable-track{ background:transparent; }
+  .trim-wrap input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; pointer-events:auto; width:22px; height:22px; border-radius:50%;
+    background:#fff; border:3px solid var(--accent); box-shadow:0 3px 8px rgba(0,0,0,0.35); margin-top:0;
+    cursor:grab;
+  }
+  .trim-wrap input[type=range]::-moz-range-thumb{
+    pointer-events:auto; width:22px; height:22px; border-radius:50%;
+    background:#fff; border:3px solid var(--accent); box-shadow:0 3px 8px rgba(0,0,0,0.35); cursor:grab;
+  }
+  .trim-wrap input[type=range]::-moz-range-track{ background:transparent; border:none; }
 
   /* ---------- Text layer corner action buttons ---------- */
   #textActions{ position:absolute; inset:0; pointer-events:none; z-index:7; display:none; }
@@ -357,10 +445,9 @@
     </div>
 
     <div class="type-row">
-      <button class="type-box soon" id="newVideoBox">
+      <button class="type-box" id="newVideoBox">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="14" height="12" rx="2.5"/><path d="M16 10l6-3v10l-6-3"/></svg>
         <span data-i18n="type_video">ویدیو</span>
-        <span class="soon-tag" data-i18n="soon">به‌زودی</span>
       </button>
       <button class="type-box" id="newPhotoBox">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
@@ -376,6 +463,18 @@
 </div>
 <input type="file" id="homeUploadInput" accept="image/*">
 
+<div id="videoModal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="modal-icon">🎬</div>
+    <p class="modal-title" data-i18n="video_prompt_title">اول ویدیوت رو بفرست</p>
+    <p class="modal-text" data-i18n="video_prompt_text">همینجا تو چت با ربات یه ویدیو بفرست؛ ربات یه دکمه‌ی «ویرایش این ویدیو» برات می‌فرسته که مستقیم بازت می‌کنه تو این صفحه.</p>
+    <div class="modal-actions">
+      <button class="tbtn active" id="videoModalCloseApp"><span data-i18n="video_prompt_go">برو به چت</span></button>
+      <button class="icon-btn" id="videoModalClose">✕</button>
+    </div>
+  </div>
+</div>
+
 <div id="leaderboardScreen" class="hidden">
   <div class="home-topbar" style="justify-content:flex-start;gap:10px;">
     <button class="back-btn" id="lbBackBtn">
@@ -386,6 +485,41 @@
   <div class="home-body" style="padding-top:2px;">
     <div class="leaderboard-card" style="padding-top:6px;">
       <div id="fullLeaderboardList"><div class="lb-empty" data-i18n="leaderboard_empty">هنوز کسی ادیتی نزده</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="videoEditorScreen" class="hidden">
+  <header>
+    <button class="back-btn" id="videoBackBtn">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <h1><span class="dot"></span><span data-i18n="video_editor_title">ویرایش ویدیو</span></h1>
+    <button class="save-btn" id="videoSaveBtn">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      <span data-i18n="save">ذخیره</span>
+    </button>
+  </header>
+
+  <div id="videoPreviewWrap">
+    <video id="videoPreview" playsinline muted></video>
+    <button id="videoPlayToggle" aria-label="play">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+    <div id="videoLoadingOverlay" class="show"><div class="spinner"></div><span data-i18n="loading">در حال دریافت ویدیو از تلگرام…</span></div>
+  </div>
+
+  <div id="videoTrimPanel">
+    <div class="video-time-row">
+      <span id="trimStartLabel">0:00</span>
+      <span class="hint-note" style="margin:0;padding:2px 8px;" data-i18n="video_trim_hint">دستگیره‌ها رو بکش تا بخش دلخواه رو انتخاب کنی</span>
+      <span id="trimEndLabel">0:00</span>
+    </div>
+    <div class="trim-wrap">
+      <div class="trim-track-bg"></div>
+      <div class="trim-track-selected" id="trimSelected"></div>
+      <input type="range" id="trimStartRange" min="0" max="100" value="0" step="0.1">
+      <input type="range" id="trimEndRange" min="0" max="100" value="100" step="0.1">
     </div>
   </div>
 </div>
@@ -496,7 +630,12 @@
       library_title:'ادیت‌های من', library_empty:'هنوز ادیتی نساختی',
       group_text:'متن و ظاهر', group_transform:'اندازه و چرخش', group_opacity:'شفافیت',
       gif_btn:'گیف', gif_making:'در حال ساخت گیف…', gif_sent:'گیف تو چتت ذخیره شد ✅', gif_error:'ساخت گیف با مشکل مواجه شد',
-      resize_panel_title:'📐 ابعاد و موقعیت عکس', resize_done:'تأیید ابعاد'
+      resize_panel_title:'📐 ابعاد و موقعیت عکس', resize_done:'تأیید ابعاد',
+      video_prompt_title:'اول ویدیوت رو بفرست', video_prompt_go:'برو به چت',
+      video_prompt_text:'همینجا تو چت با ربات یه ویدیو بفرست؛ ربات یه دکمه‌ی «ویرایش این ویدیو» برات می‌فرسته که مستقیم بازت می‌کنه تو این صفحه.',
+      video_editor_title:'ویرایش ویدیو', video_trim_hint:'دستگیره‌ها رو بکش تا بخش دلخواه رو انتخاب کنی',
+      video_loading:'در حال دریافت ویدیو از تلگرام…', video_making:'در حال ساخت ویدیو…',
+      video_sent:'ویدیو تو چتت ذخیره شد ✅', video_error:'ساخت ویدیو با مشکل مواجه شد', video_too_long:'حداکثر ۳۰ ثانیه رو انتخاب کن'
     },
     en:{
       title:'Photo & Text Editor', save:'Save',
@@ -525,7 +664,12 @@
       library_title:'My edits', library_empty:'No edits yet',
       group_text:'Text & style', group_transform:'Size & rotation', group_opacity:'Opacity',
       gif_btn:'GIF', gif_making:'Making GIF…', gif_sent:'Saved GIF to your chat ✅', gif_error:'Could not create the GIF',
-      resize_panel_title:'📐 Photo size & position', resize_done:'Done'
+      resize_panel_title:'📐 Photo size & position', resize_done:'Done',
+      video_prompt_title:'Send your video first', video_prompt_go:'Go to chat',
+      video_prompt_text:'Send a video right here in chat with the bot; it\u2019ll reply with an \u201cEdit this video\u201d button that opens it directly in this screen.',
+      video_editor_title:'Edit video', video_trim_hint:'Drag the handles to pick the part you want',
+      video_loading:'Fetching video from Telegram…', video_making:'Making video…',
+      video_sent:'Saved video to your chat ✅', video_error:'Could not create the video', video_too_long:'Pick 30 seconds or less'
     }
   };
   let currentLang = 'fa';
@@ -1679,6 +1823,7 @@
   const homeScreen = document.getElementById('home');
   const appScreen = document.getElementById('app');
   const leaderboardScreen = document.getElementById('leaderboardScreen');
+  const videoEditorScreen = document.getElementById('videoEditorScreen');
   function personSvg(){
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>';
   }
@@ -1686,12 +1831,14 @@
     homeScreen.classList.toggle('hidden', name!=='home');
     appScreen.classList.toggle('hidden', name!=='editor');
     leaderboardScreen.classList.toggle('hidden', name!=='leaderboard');
+    videoEditorScreen.classList.toggle('hidden', name!=='video');
     if(tg && tg.MainButton){
       try{ name==='editor' ? tg.MainButton.show() : tg.MainButton.hide(); }catch(e){}
     }
     if(name==='editor'){ resizeCanvasToContainer(); draw(); }
     else if(name==='home'){ refreshProfile(); refreshLeaderboard(); refreshLibrary(); }
     else if(name==='leaderboard'){ refreshFullLeaderboard(); }
+    if(name!=='video') resetVideoEditor(); // leaving the video screen frees its resources
   }
   function showHome(){ showScreen('home'); }
   function showEditor(){ showScreen('editor'); }
@@ -1702,14 +1849,202 @@
   }
   document.getElementById('backBtn').addEventListener('click', ()=>showScreen('home'));
   document.getElementById('lbBackBtn').addEventListener('click', ()=>showScreen('home'));
+  document.getElementById('videoBackBtn').addEventListener('click', ()=>showScreen('home'));
   document.getElementById('openFullLeaderboard').addEventListener('click', ()=>showScreen('leaderboard'));
   document.getElementById('newPhotoBox').addEventListener('click', ()=>{
     resetEditor();
     showEditor();
   });
+
+  // ---------- Video: prompt to send it in chat, then edit (trim) it ----------
+  const videoModal = document.getElementById('videoModal');
   document.getElementById('newVideoBox').addEventListener('click', ()=>{
-    showToast(t('soon'));
+    videoModal.classList.remove('hidden');
   });
+  document.getElementById('videoModalClose').addEventListener('click', ()=>{
+    videoModal.classList.add('hidden');
+  });
+  document.getElementById('videoModalCloseApp').addEventListener('click', ()=>{
+    videoModal.classList.add('hidden');
+    if(tg && tg.close){ try{ tg.close(); return; }catch(e){} }
+  });
+
+  const videoPreview = document.getElementById('videoPreview');
+  const videoLoadingOverlay = document.getElementById('videoLoadingOverlay');
+  const videoPlayToggle = document.getElementById('videoPlayToggle');
+  const trimStartRange = document.getElementById('trimStartRange');
+  const trimEndRange = document.getElementById('trimEndRange');
+  const trimSelected = document.getElementById('trimSelected');
+  const trimStartLabel = document.getElementById('trimStartLabel');
+  const trimEndLabel = document.getElementById('trimEndLabel');
+  const MAX_TRIM_SECONDS = 30;
+  let videoDuration = 0, trimStart = 0, trimEnd = 0, videoObjectUrl = null;
+
+  function fmtTime(s){
+    s = Math.max(0, s||0);
+    const m = Math.floor(s/60), sec = Math.floor(s%60);
+    return m+':'+String(sec).padStart(2,'0');
+  }
+  function updateTrimUI(){
+    const pctS = videoDuration ? (trimStart/videoDuration*100) : 0;
+    const pctE = videoDuration ? (trimEnd/videoDuration*100) : 100;
+    trimSelected.style.left = pctS+'%';
+    trimSelected.style.right = (100-pctE)+'%';
+    trimStartLabel.textContent = fmtTime(trimStart);
+    trimEndLabel.textContent = fmtTime(trimEnd);
+  }
+  function resetVideoEditor(){
+    videoPreview.pause();
+    videoPreview.removeAttribute('src');
+    videoPreview.load();
+    if(videoObjectUrl){ URL.revokeObjectURL(videoObjectUrl); videoObjectUrl = null; }
+    videoDuration = trimStart = trimEnd = 0;
+    trimStartRange.value = 0; trimEndRange.value = 100;
+    updateTrimUI();
+  }
+  trimStartRange.addEventListener('input', ()=>{
+    let v = +trimStartRange.value;
+    if(v > +trimEndRange.value - 1) v = Math.max(0, +trimEndRange.value - 1);
+    trimStartRange.value = v;
+    trimStart = v/100*videoDuration;
+    videoPreview.pause();
+    videoPreview.currentTime = trimStart;
+    updateTrimUI();
+  });
+  trimEndRange.addEventListener('input', ()=>{
+    let v = +trimEndRange.value;
+    if(v < +trimStartRange.value + 1) v = Math.min(100, +trimStartRange.value + 1);
+    // Cap the selected range to MAX_TRIM_SECONDS.
+    if(videoDuration){
+      const maxV = (trimStart+MAX_TRIM_SECONDS)/videoDuration*100;
+      if(v > maxV) v = Math.min(v, 100, maxV);
+    }
+    trimEndRange.value = v;
+    trimEnd = v/100*videoDuration;
+    videoPreview.pause();
+    videoPreview.currentTime = trimEnd;
+    updateTrimUI();
+  });
+  videoPlayToggle.addEventListener('click', ()=>{
+    if(videoPreview.paused){
+      if(videoPreview.currentTime >= trimEnd - 0.05) videoPreview.currentTime = trimStart;
+      videoPreview.muted = false;
+      videoPreview.play();
+    }else{
+      videoPreview.pause();
+    }
+  });
+  videoPreview.addEventListener('play', ()=> videoPlayToggle.classList.add('hide'));
+  videoPreview.addEventListener('pause', ()=> videoPlayToggle.classList.remove('hide'));
+  videoPreview.addEventListener('timeupdate', ()=>{
+    if(!videoPreview.paused && videoPreview.currentTime >= trimEnd){
+      videoPreview.pause();
+      videoPreview.currentTime = trimStart;
+    }
+  });
+
+  async function loadVideoFromTelegramFile(fileId){
+    showScreen('video');
+    videoLoadingOverlay.classList.add('show');
+    try{
+      videoPreview.src = '/api/image?file_id=' + encodeURIComponent(fileId);
+      await new Promise((resolve, reject)=>{
+        videoPreview.onloadedmetadata = resolve;
+        videoPreview.onerror = reject;
+      });
+      videoDuration = videoPreview.duration || 0;
+      trimStart = 0;
+      trimEnd = Math.min(videoDuration, MAX_TRIM_SECONDS);
+      trimStartRange.value = 0;
+      trimEndRange.value = videoDuration ? (trimEnd/videoDuration*100) : 100;
+      updateTrimUI();
+    }catch(e){
+      console.error('could not load telegram video', e);
+      alert(t('video_error'));
+      showScreen('home');
+    }finally{
+      videoLoadingOverlay.classList.remove('show');
+    }
+  }
+
+  async function exportVideo(){
+    if(!videoDuration || trimEnd-trimStart <= 0.2) return;
+    showToast(t('video_making'));
+    try{
+      videoPreview.pause();
+      videoPreview.currentTime = trimStart;
+      await new Promise(resolve=>{ videoPreview.onseeked = resolve; });
+
+      const vw = videoPreview.videoWidth||640, vh = videoPreview.videoHeight||360;
+      const MAXV = 960;
+      let cw = vw, ch = vh;
+      if(Math.max(cw,ch) > MAXV){ const s = MAXV/Math.max(cw,ch); cw=Math.round(cw*s); ch=Math.round(ch*s); }
+      const vcanvas = document.createElement('canvas');
+      vcanvas.width = cw; vcanvas.height = ch;
+      const vctx = vcanvas.getContext('2d');
+
+      const canvasStream = vcanvas.captureStream(30);
+      let audioTracks = [];
+      try{ audioTracks = videoPreview.captureStream ? videoPreview.captureStream().getAudioTracks() : []; }catch(e){}
+      const outStream = new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks]);
+
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus'
+                      : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus'
+                      : 'video/webm';
+      const recorder = new MediaRecorder(outStream, { mimeType });
+      const chunks = [];
+      recorder.ondataavailable = e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+      const stopped = new Promise(resolve=>{ recorder.onstop = resolve; });
+
+      let raf;
+      function drawFrame(){
+        vctx.drawImage(videoPreview, 0, 0, cw, ch);
+        raf = requestAnimationFrame(drawFrame);
+      }
+      recorder.start();
+      videoPreview.muted = true;
+      await videoPreview.play();
+      drawFrame();
+
+      await new Promise(resolve=>{
+        const check = setInterval(()=>{
+          if(videoPreview.currentTime >= trimEnd || videoPreview.paused){
+            clearInterval(check);
+            cancelAnimationFrame(raf);
+            videoPreview.pause();
+            recorder.stop();
+            resolve();
+          }
+        }, 100);
+      });
+      await stopped;
+
+      const blob = new Blob(chunks, { type:'video/webm' });
+      const reader = new FileReader();
+      reader.onload = async ()=>{
+        const base64 = String(reader.result).split(',')[1];
+        if(tg && tg.initData){
+          try{
+            const res = await fetch('/api/deliver', {
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ initData: tg.initData, editedVideo: base64 })
+            });
+            const data = await res.json();
+            if(data.ok){ showToast(t('video_sent')); return; }
+          }catch(e){ console.error('video deliver failed', e); }
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'edifast.webm'; a.click();
+        setTimeout(()=>URL.revokeObjectURL(url), 2000);
+      };
+      reader.readAsDataURL(blob);
+    }catch(e){
+      console.error('video export failed', e);
+      alert(t('video_error'));
+    }
+  }
+  document.getElementById('videoSaveBtn').addEventListener('click', exportVideo);
 
   let myProfile = null;
   async function refreshProfile(){
@@ -1789,100 +2124,4 @@
         const mine = ranked[myIdx];
         const rest = ranked.slice(3).filter(u=>String(u.id)!==String(myId));
         display = [...top3, mine, ...rest];
-      }
-      list.innerHTML = display.map((u,i)=>{
-        const isMe = myId!=null && String(u.id)===String(myId);
-        return renderLbRow(u, i, isMe);
-      }).join('');
-    }catch(e){
-      console.error('full leaderboard fetch failed', e);
-      list.innerHTML = '<div class="lb-empty">'+escapeHtml(t('leaderboard_empty'))+'</div>';
-    }
-  }
-
-  async function refreshLibrary(){
-    const grid = document.getElementById('libraryGrid');
-    if(!(tg && tg.initData)){
-      grid.innerHTML = '<div class="lb-empty">'+escapeHtml(t('library_empty'))+'</div>';
-      return;
-    }
-    try{
-      const res = await fetch('/api/history', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ initData: tg.initData })
-      });
-      const data = await res.json();
-      if(!data.ok || !data.history || !data.history.length){
-        grid.innerHTML = '<div class="lb-empty">'+escapeHtml(t('library_empty'))+'</div>';
-        return;
-      }
-      grid.innerHTML = data.history.map(item=>(
-        '<button class="library-item" data-file-id="'+escapeHtml(item.file_id)+'">'
-        + '<img src="/api/image?file_id='+encodeURIComponent(item.file_id)+'" alt="" loading="lazy">'
-        + '<span class="library-badge">🖼</span>'
-        + '</button>'
-      )).join('');
-      grid.querySelectorAll('.library-item').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          resetEditor();
-          showEditor();
-          loadFromTelegramFile(btn.dataset.fileId);
-        });
-      });
-    }catch(e){
-      console.error('history fetch failed', e);
-      grid.innerHTML = '<div class="lb-empty">'+escapeHtml(t('library_empty'))+'</div>';
-    }
-  }
-
-  // Tapping the avatar/profile card jumps straight into a new edit with a device photo.
-  document.getElementById('profileCard').addEventListener('click', ()=>{
-    document.getElementById('homeUploadInput').click();
-  });
-  document.getElementById('homeUploadInput').addEventListener('change', (e)=>{
-    const file = e.target.files && e.target.files[0];
-    e.target.value = '';
-    if(!file) return;
-    resetEditor();
-    showEditor();
-    loadImageFile(file, addBackgroundImage);
-  });
-
-  // ---------- Auto-load photo sent in chat ----------
-  async function loadFromTelegramFile(fileId){
-    loadingOverlay.classList.add('show');
-    try{
-      const res = await fetch('/api/image?file_id=' + encodeURIComponent(fileId));
-      if(!res.ok) throw new Error('fetch failed');
-      const blob = await res.blob();
-      const img = new Image();
-      const url = URL.createObjectURL(blob);
-      await new Promise((resolve, reject)=>{ img.onload = resolve; img.onerror = reject; img.src = url; });
-      addBackgroundImage(img);
-      URL.revokeObjectURL(url);
-    }catch(e){ console.error('could not load telegram photo', e); }
-    finally{ loadingOverlay.classList.remove('show'); }
-  }
-
-  // ---------- Init ----------
-  currentLang = detectLang();
-  applyI18n();
-  if(tg && tg.onEvent){ try{ tg.onEvent('themeChanged', ()=>draw()); }catch(e){} }
-  (function initRoute(){
-    // Coming from "edit this photo" in the chat -> jump straight into the editor.
-    // Otherwise (plain /start) -> land on the home screen first.
-    try{
-      const params = new URLSearchParams(location.search);
-      const fileId = params.get('file_id');
-      if(fileId){
-        showScreen('editor');
-        loadFromTelegramFile(fileId);
-        return;
-      }
-    }catch(e){}
-    showScreen('home');
-  })();
-})();
-</script>
-</body>
-</html>
+  
