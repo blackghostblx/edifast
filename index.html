@@ -354,6 +354,13 @@
   /* ---------- Video editor ---------- */
   #videoEditorScreen{ display:flex; flex-direction:column; height:100%; }
   #videoEditorScreen.hidden{ display:none; }
+  #bootSplash{
+    position:fixed; inset:0; z-index:100; background:var(--bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+  }
+  #bootSplash.hidden{ display:none; }
+  .boot-logo{ width:64px; height:64px; border-radius:50%; overflow:hidden; box-shadow:0 8px 24px rgba(124,108,240,0.35); }
+  .boot-logo img{ width:100%; height:100%; object-fit:cover; }
   #videoPreviewWrap{
     flex:1; position:relative; display:flex; align-items:center; justify-content:center;
     padding:14px; min-height:0; background:var(--bg);
@@ -412,6 +419,10 @@
 </style>
 </head>
 <body>
+<div id="bootSplash">
+  <div class="boot-logo"><img src="/logo.png" alt=""></div>
+  <div class="spinner"></div>
+</div>
 <div id="home">
   <div class="home-topbar">
     <div class="home-logo"><img src="/logo.png" alt="Edifast"></div>
@@ -625,7 +636,7 @@
       no_image_alert:'اول یه عکس اضافه کن.', default_text:'متن جدید', delete:'حذف',
       saved_to_chat:'عکس تو چتت با ربات ذخیره شد ✅', saved_fallback:'دانلود شد',
       edits_label:'تعداد ادیت‌ها', edits_suffix:'ادیت', leaderboard_title:'برترین ادیتورها', leaderboard_empty:'هنوز کسی ادیتی نزده',
-      new_edit:'ادیت جدید', anonymous:'کاربر',
+      new_edit:'ادیت جدید', anonymous:'کاربر', profile_error:'مشکلی تو بارگذاری پروفایل پیش اومد',
       type_video:'ویدیو', type_photo:'تصویر', soon:'به‌زودی',
       library_title:'ادیت‌های من', library_empty:'هنوز ادیتی نساختی',
       group_text:'متن و ظاهر', group_transform:'اندازه و چرخش', group_opacity:'شفافیت',
@@ -659,7 +670,7 @@
       no_image_alert:'Add a photo first.', default_text:'New text', delete:'Delete',
       saved_to_chat:'Saved to your chat with the bot ✅', saved_fallback:'Downloaded',
       edits_label:'Edits', edits_suffix:'edits', leaderboard_title:'Top editors', leaderboard_empty:'No edits yet',
-      new_edit:'New edit', anonymous:'User',
+      new_edit:'New edit', anonymous:'User', profile_error:'Could not load profile',
       type_video:'Video', type_photo:'Photo', soon:'Coming soon',
       library_title:'My edits', library_empty:'No edits yet',
       group_text:'Text & style', group_transform:'Size & rotation', group_opacity:'Opacity',
@@ -2072,8 +2083,13 @@
         if(data.profile.photo_url){
           avatarEl.innerHTML = '<img src="'+data.profile.photo_url+'" alt="">'+'<div class="avatar-plus">+</div>';
         }
+      }else{
+        nameEl.textContent = t('profile_error');
       }
-    }catch(e){ console.error('profile fetch failed', e); }
+    }catch(e){
+      console.error('profile fetch failed', e);
+      nameEl.textContent = t('profile_error');
+    }
   }
 
   function renderLbRow(u, i, highlight){
@@ -2124,4 +2140,107 @@
         const mine = ranked[myIdx];
         const rest = ranked.slice(3).filter(u=>String(u.id)!==String(myId));
         display = [...top3, mine, ...rest];
-  
+      }
+      list.innerHTML = display.map((u,i)=>{
+        const isMe = myId!=null && String(u.id)===String(myId);
+        return renderLbRow(u, i, isMe);
+      }).join('');
+    }catch(e){
+      console.error('full leaderboard fetch failed', e);
+      list.innerHTML = '<div class="lb-empty">'+escapeHtml(t('leaderboard_empty'))+'</div>';
+    }
+  }
+
+  async function refreshLibrary(){
+    const grid = document.getElementById('libraryGrid');
+    if(!(tg && tg.initData)){
+      grid.innerHTML = '<div class="lb-empty">'+escapeHtml(t('library_empty'))+'</div>';
+      return;
+    }
+    try{
+      const res = await fetch('/api/history', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ initData: tg.initData })
+      });
+      const data = await res.json();
+      if(!data.ok || !data.history || !data.history.length){
+        grid.innerHTML = '<div class="lb-empty">'+escapeHtml(t('library_empty'))+'</div>';
+        return;
+      }
+      grid.innerHTML = data.history.map(item=>(
+        '<button class="library-item" data-file-id="'+escapeHtml(item.file_id)+'">'
+        + '<img src="/api/image?file_id='+encodeURIComponent(item.file_id)+'" alt="" loading="lazy">'
+        + '<span class="library-badge">🖼</span>'
+        + '</button>'
+      )).join('');
+      grid.querySelectorAll('.library-item').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          resetEditor();
+          showEditor();
+          loadFromTelegramFile(btn.dataset.fileId);
+        });
+      });
+    }catch(e){
+      console.error('history fetch failed', e);
+      grid.innerHTML = '<div class="lb-empty">'+escapeHtml(t('library_empty'))+'</div>';
+    }
+  }
+
+  // Tapping the avatar/profile card jumps straight into a new edit with a device photo.
+  document.getElementById('profileCard').addEventListener('click', ()=>{
+    document.getElementById('homeUploadInput').click();
+  });
+  document.getElementById('homeUploadInput').addEventListener('change', (e)=>{
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    resetEditor();
+    showEditor();
+    loadImageFile(file, addBackgroundImage);
+  });
+
+  // ---------- Auto-load photo sent in chat ----------
+  async function loadFromTelegramFile(fileId){
+    loadingOverlay.classList.add('show');
+    try{
+      const res = await fetch('/api/image?file_id=' + encodeURIComponent(fileId));
+      if(!res.ok) throw new Error('fetch failed');
+      const blob = await res.blob();
+      const img = new Image();
+      const url = URL.createObjectURL(blob);
+      await new Promise((resolve, reject)=>{ img.onload = resolve; img.onerror = reject; img.src = url; });
+      addBackgroundImage(img);
+      URL.revokeObjectURL(url);
+    }catch(e){ console.error('could not load telegram photo', e); }
+    finally{ loadingOverlay.classList.remove('show'); }
+  }
+
+  // ---------- Init ----------
+  currentLang = detectLang();
+  applyI18n();
+  if(tg && tg.onEvent){ try{ tg.onEvent('themeChanged', ()=>draw()); }catch(e){} }
+  (function initRoute(){
+    // Coming from "edit this photo/video" in the chat -> jump straight into the right editor.
+    // Otherwise (plain /start) -> land on the home screen first.
+    try{
+      const params = new URLSearchParams(location.search);
+      const fileId = params.get('file_id');
+      const videoFileId = params.get('video_file_id');
+      if(fileId){
+        showScreen('editor');
+        loadFromTelegramFile(fileId);
+        return;
+      }
+      if(videoFileId){
+        loadVideoFromTelegramFile(videoFileId);
+        return;
+      }
+    }catch(e){}
+    showScreen('home');
+  })();
+  const bootSplash = document.getElementById('bootSplash');
+  if(bootSplash) bootSplash.classList.add('hidden');
+})();
+</script>
+</body>
+</html>
