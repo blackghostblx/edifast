@@ -1839,23 +1839,70 @@
   // Telegram's sendAnimation only renders inline as a GIF for real GIF (or H.264 mp4)
   // files — a webm video gets delivered as a plain video attachment instead. Since the
   // canvas content itself doesn't move, we build a real single-frame GIF89a file
-  // client-side (fixed 252-color palette + GIF LZW encoding) instead of recording video.
-  function buildGifPalette(){
-    const palette = [];
-    for(let r=0;r<6;r++) for(let g=0;g<7;g++) for(let b=0;b<6;b++){
-      palette.push([Math.round(r/5*255), Math.round(g/6*255), Math.round(b/5*255)]);
+  // client-side (LZW encoding) instead of recording video.
+  //
+  // The palette is built per-image (median-cut), not a fixed color cube — a fixed
+  // palette is what was causing the muddy/banded colors before.
+  function medianCutPalette(imageData, maxColors){
+    const { data } = imageData;
+    const n = data.length/4;
+    // Building the palette from every pixel is what made this slow — a
+    // representative sample gives an essentially identical palette in a
+    // fraction of the time (the full image is still used when applying it).
+    const SAMPLE_CAP = 12000;
+    const stride = Math.max(1, Math.floor(n/SAMPLE_CAP));
+    const pixels = [];
+    for(let p=0; p<n; p+=stride){
+      const off = p*4;
+      pixels.push([data[off], data[off+1], data[off+2]]);
     }
+    let buckets = [pixels];
+    while(buckets.length < maxColors){
+      let bestIdx=-1, bestRange=-1, bestChannel=0;
+      buckets.forEach((b, idx)=>{
+        if(b.length < 2) return;
+        for(let c=0;c<3;c++){
+          let mn=255, mx=0;
+          for(let i=0;i<b.length;i++){ const v=b[i][c]; if(v<mn) mn=v; if(v>mx) mx=v; }
+          const range = mx-mn;
+          if(range > bestRange){ bestRange=range; bestIdx=idx; bestChannel=c; }
+        }
+      });
+      if(bestIdx===-1 || bestRange<=0) break;
+      const bucket = buckets[bestIdx];
+      bucket.sort((a,b)=> a[bestChannel]-b[bestChannel]);
+      const mid = Math.floor(bucket.length/2);
+      buckets.splice(bestIdx, 1, bucket.slice(0,mid), bucket.slice(mid));
+    }
+    const palette = buckets.map(b=>{
+      if(!b.length) return [0,0,0];
+      let r=0,g=0,bl=0;
+      for(let i=0;i<b.length;i++){ r+=b[i][0]; g+=b[i][1]; bl+=b[i][2]; }
+      return [Math.round(r/b.length), Math.round(g/b.length), Math.round(bl/b.length)];
+    });
     while(palette.length < 256) palette.push([0,0,0]);
     return palette;
   }
-  function quantizeToIndices(imageData){
-    const { data, width, height } = imageData;
-    const indices = new Uint8Array(width*height);
+  function quantizeToIndices(imageData, palette){
+    const { data } = imageData;
+    const indices = new Uint8Array(data.length/4);
+    const cache = new Map(); // exact-color memo — most photos repeat a LOT of pixel values
     for(let i=0, p=0; i<data.length; i+=4, p++){
-      const r = Math.round(data[i]/255*5);
-      const g = Math.round(data[i+1]/255*6);
-      const b = Math.round(data[i+2]/255*5);
-      indices[p] = r*42 + g*6 + b;
+      const r=data[i], g=data[i+1], b=data[i+2];
+      const key = (r<<16)|(g<<8)|b;
+      let idx = cache.get(key);
+      if(idx === undefined){
+        let best=0, bestDist=Infinity;
+        for(let c=0;c<palette.length;c++){
+          const pc = palette[c];
+          const dr=r-pc[0], dg=g-pc[1], db=b-pc[2];
+          const dist = dr*dr+dg*dg+db*db;
+          if(dist < bestDist){ bestDist=dist; best=c; }
+        }
+        idx = best;
+        cache.set(key, idx);
+      }
+      indices[p] = idx;
     }
     return indices;
   }
@@ -1906,8 +1953,7 @@
     if(bitCount > 0) bytes.push(bitBuffer & 0xFF);
     return bytes;
   }
-  function buildGif89a(width, height, indices){
-    const palette = buildGifPalette();
+  function buildGif89a(width, height, indices, palette){
     const bytes = [];
     const pushStr = s=>{ for(let i=0;i<s.length;i++) bytes.push(s.charCodeAt(i)); };
     const push16 = n=>{ bytes.push(n & 0xFF, (n>>8) & 0xFF); };
@@ -1938,7 +1984,7 @@
       // Cap the GIF's resolution — plenty for a chat sticker, keeps encoding fast.
       // Cropped to the photo's own frame, same as the PNG export.
       const frame = computePhotoFrameRect();
-      const GIF_MAX = 640;
+      const GIF_MAX = 800; // bumped up now that the palette is adaptive, not a fixed color cube
       const longEdge = Math.max(frame.w, frame.h);
       const scale = Math.min(1, GIF_MAX/longEdge);
       const gw = Math.max(1, Math.round(frame.w*scale));
@@ -1951,8 +1997,9 @@
       exporting = false; selected = wasSelected; draw();
 
       const imageData = octx.getImageData(0, 0, gw, gh);
-      const indices = quantizeToIndices(imageData);
-      const gifBytes = buildGif89a(gw, gh, indices);
+      const palette = medianCutPalette(imageData, 256);
+      const indices = quantizeToIndices(imageData, palette);
+      const gifBytes = buildGif89a(gw, gh, indices, palette);
       const blob = new Blob([gifBytes], { type:'image/gif' });
 
       if(tg && tg.initData){
