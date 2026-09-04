@@ -92,8 +92,7 @@
     flex-direction:column; gap:12px; background:rgba(12,12,17,0.75); backdrop-filter:blur(6px);
     z-index:5; border-radius:14px;
   }
-  #loadingOverlay.show{ display:flex; }
-  .spinner{
+  #loadingOverlay.show{ display:flex; }  .spinner{
     width:34px; height:34px; border-radius:50%;
     border:3px solid rgba(255,255,255,0.15); border-top-color:var(--accent);
     animation:spin .8s linear infinite;
@@ -365,14 +364,61 @@
     flex:1; position:relative; display:flex; align-items:center; justify-content:center;
     padding:14px; min-height:0; background:var(--bg);
   }
-  #videoPreview{ max-width:100%; max-height:100%; border-radius:14px; box-shadow:0 20px 50px rgba(0,0,0,0.55); background:#000; }
+  #videoPreview{ max-width:100%; max-height:100%; display:block; border-radius:14px; box-shadow:0 20px 50px rgba(0,0,0,0.55); background:#000; }
+  #videoStage{ position:relative; max-width:100%; max-height:100%; display:inline-block; line-height:0; }
+  #videoTextCanvas{
+    position:absolute; inset:0; width:100%; height:100%; touch-action:none;
+    border-radius:14px;
+  }
+  #videoAddTextBtn{
+    position:absolute; top:24px; left:24px; z-index:3;
+    background:rgba(0,0,0,0.55); color:#fff; border:1px solid rgba(255,255,255,0.25);
+    border-radius:20px; padding:8px 16px; font-family:inherit; font-size:12.5px; font-weight:800;
+    cursor:pointer;
+  }
+  #videoAddTextBtn:active{ transform:scale(0.94); }
+  #videoLoadingOverlay{
+    position:absolute; inset:14px; display:none; align-items:center; justify-content:center;
+    flex-direction:column; gap:12px; background:rgba(12,12,17,0.75); backdrop-filter:blur(6px);
+    z-index:5; border-radius:14px; text-align:center;
+  }
+  #videoLoadingOverlay span{ font-size:12.5px; color:var(--hint); }
+  #videoLoadingOverlay.show{ display:flex; }
   #videoPlayToggle{
     position:absolute; width:52px; height:52px; border-radius:50%; border:none;
     background:rgba(0,0,0,0.55); color:#fff; display:flex; align-items:center; justify-content:center;
     cursor:pointer;
   }
   #videoPlayToggle.hide{ display:none; }
+  #videoToolsBar{
+    display:flex; gap:8px; padding:10px 14px; background:var(--bg2); border-top:1px solid var(--border);
+    flex-shrink:0; overflow-x:auto; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
+  }
+  #videoToolsBar::-webkit-scrollbar{ display:none; }
+  #videoToolsBar .tbtn{ min-width:64px; padding:8px 12px; }
+  #videoToolsBar .tbtn svg{ width:17px; height:17px; }
+  .video-tool-panel.hidden{ display:none; }
+  #videoEffectsPanel, #videoSpeedPanel, #videoTransformPanel, #videoLayersPanel{
+    background:var(--bg2); border-top:1px solid var(--border); padding:14px 16px calc(14px + env(safe-area-inset-bottom)); flex-shrink:0;
+    max-height:38vh; overflow-y:auto;
+  }
+  .vlayer-row{ background:var(--glass); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:10px; }
+  .vlayer-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+  .vlayer-label{ font-size:12.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vlayer-actions{ display:flex; gap:6px; flex-shrink:0; }
+  .vlayer-actions .icon-btn{ width:26px; height:26px; font-size:11px; }
+  .trim-wrap.small{ height:22px; }
+  .trim-wrap.small input[type=range]{ height:22px; }
+  .trim-wrap.small input[type=range]::-webkit-slider-thumb{ width:18px; height:18px; }
   #videoTrimPanel{ background:var(--bg2); border-top:1px solid var(--border); padding:12px 16px calc(14px + env(safe-area-inset-bottom)); flex-shrink:0; }
+  #videoTextPanel{ background:var(--bg2); border-top:1px solid var(--border); padding:14px 16px calc(14px + env(safe-area-inset-bottom)); flex-shrink:0; }
+  #videoTextPanel.hidden{ display:none; }
+  #videoTextPanel textarea{
+    width:100%; background:rgba(127,127,127,0.08); border:1px solid var(--border);
+    color:var(--text); padding:10px 12px; border-radius:11px; font-family:inherit; font-size:14px; resize:none;
+  }
+  .video-text-actions{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; }
+  .video-text-actions .tbtn{ flex:1; min-width:0; flex-direction:row; gap:6px; padding:10px; }
   .video-time-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
   .video-time-row span:first-child, .video-time-row span:last-child{ font-size:11.5px; font-weight:800; color:var(--hint); direction:ltr; flex-shrink:0; }
   .video-time-row .hint-note{ font-size:10.5px; flex:1; text-align:center; }
@@ -513,14 +559,53 @@
   </header>
 
   <div id="videoPreviewWrap">
-    <video id="videoPreview" playsinline muted></video>
+    <div id="videoStage">
+      <video id="videoPreview" playsinline muted></video>
+      <canvas id="videoTextCanvas"></canvas>
+    </div>
     <button id="videoPlayToggle" aria-label="play">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
     </button>
-    <div id="videoLoadingOverlay" class="show"><div class="spinner"></div><span data-i18n="loading">در حال دریافت ویدیو از تلگرام…</span></div>
+    <button id="videoAddTextBtn" data-i18n="video_add_text">+ متن</button>
+    <div id="videoLoadingOverlay" class="show"><div class="spinner"></div><span data-i18n="video_loading">در حال دریافت ویدیو از تلگرام…</span></div>
   </div>
 
-  <div id="videoTrimPanel">
+  <div id="videoTextPanel" class="hidden">
+    <div class="row"><textarea id="vtTextInput" dir="auto" rows="2"></textarea></div>
+    <div class="row two-col">
+      <div><label data-i18n="color_label">رنگ متن</label><input type="color" id="vtColorInput"></div>
+      <div><label data-i18n="video_text_size">اندازه</label><input type="range" id="vtSizeRange" min="10" max="200"></div>
+    </div>
+    <div class="video-text-actions">
+      <button class="icon-btn danger" id="vtDeleteBtn">🗑</button>
+      <button class="tbtn active" id="vtDoneBtn"><span data-i18n="done">تمام</span></button>
+    </div>
+  </div>
+
+  <div id="videoToolsBar">
+    <button class="tbtn active" id="vToolTrim" data-tool="trim">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v18M18 3v18M3 9h4M17 9h4M3 15h4M17 15h4"/></svg>
+      <span data-i18n="video_tool_trim">برش</span>
+    </button>
+    <button class="tbtn" id="vToolEffects" data-tool="effects">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18 4.5 4.5 0 0 0 0-9 2.25 2.25 0 0 1 0-4.5"/></svg>
+      <span data-i18n="video_tool_effects">افکت</span>
+    </button>
+    <button class="tbtn" id="vToolSpeed" data-tool="speed">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+      <span data-i18n="video_tool_speed">سرعت</span>
+    </button>
+    <button class="tbtn" id="vToolTransform" data-tool="transform">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7M21 12a9 9 0 0 1-15 6.7"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>
+      <span data-i18n="video_tool_transform">چرخش/کراپ</span>
+    </button>
+    <button class="tbtn" id="vToolLayers" data-tool="layers">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      <span data-i18n="video_tool_layers">لایه‌ها</span>
+    </button>
+  </div>
+
+  <div id="videoTrimPanel" class="video-tool-panel">
     <div class="video-time-row">
       <span id="trimStartLabel">0:00</span>
       <span class="hint-note" style="margin:0;padding:2px 8px;" data-i18n="video_trim_hint">دستگیره‌ها رو بکش تا بخش دلخواه رو انتخاب کنی</span>
@@ -532,6 +617,52 @@
       <input type="range" id="trimStartRange" min="0" max="100" value="0" step="0.1">
       <input type="range" id="trimEndRange" min="0" max="100" value="100" step="0.1">
     </div>
+  </div>
+
+  <div id="videoEffectsPanel" class="video-tool-panel hidden">
+    <div class="row"><label data-i18n="brightness">روشنایی</label><div class="range-row"><input type="range" id="vfBright" min="50" max="150" value="100"><span id="vfBrightVal">100%</span></div></div>
+    <div class="row"><label data-i18n="contrast">کنتراست</label><div class="range-row"><input type="range" id="vfContrast" min="50" max="150" value="100"><span id="vfContrastVal">100%</span></div></div>
+    <div class="row"><label data-i18n="saturate">اشباع رنگ</label><div class="range-row"><input type="range" id="vfSaturate" min="0" max="200" value="100"><span id="vfSaturateVal">100%</span></div></div>
+    <div class="row"><label data-i18n="blur">بلور</label><div class="range-row"><input type="range" id="vfBlur" min="0" max="10" value="0"><span id="vfBlurVal">0px</span></div></div>
+    <div class="row"><label data-i18n="grayscale">سیاه‌سفید</label><div class="range-row"><input type="range" id="vfGray" min="0" max="100" value="0"><span id="vfGrayVal">0%</span></div></div>
+    <button class="chip" id="vfResetBtn" data-i18n="reset">ریست</button>
+  </div>
+
+  <div id="videoSpeedPanel" class="video-tool-panel hidden">
+    <p class="section-title" data-i18n="video_speed_title">سرعت پخش</p>
+    <div class="chip-row" id="speedChips">
+      <label class="chip"><input type="radio" name="vspeed" value="0.5"> 0.5x</label>
+      <label class="chip"><input type="radio" name="vspeed" value="1" checked> 1x</label>
+      <label class="chip"><input type="radio" name="vspeed" value="1.5"> 1.5x</label>
+      <label class="chip"><input type="radio" name="vspeed" value="2"> 2x</label>
+    </div>
+  </div>
+
+  <div id="videoTransformPanel" class="video-tool-panel hidden">
+    <div class="video-text-actions" style="margin-top:0;">
+      <button class="tbtn" id="vRotateBtn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7M21 12a9 9 0 0 1-15 6.7"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>
+        <span data-i18n="video_rotate">چرخش ۱۸۰°</span>
+      </button>
+      <button class="tbtn" id="vFlipBtn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M17 8l4 4-4 4M7 8l-4 4 4 4"/></svg>
+        <span data-i18n="video_flip">آینه‌ای</span>
+      </button>
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <label data-i18n="video_crop_title">کراپ</label>
+      <div class="chip-row" id="cropChips">
+        <label class="chip"><input type="radio" name="vcrop" value="original" checked><span data-i18n="video_crop_original">اصلی</span></label>
+        <label class="chip"><input type="radio" name="vcrop" value="1:1"><span>۱:۱</span></label>
+        <label class="chip"><input type="radio" name="vcrop" value="9:16"><span>۹:۱۶</span></label>
+        <label class="chip"><input type="radio" name="vcrop" value="16:9"><span>۱۶:۹</span></label>
+      </div>
+    </div>
+  </div>
+
+  <div id="videoLayersPanel" class="video-tool-panel hidden">
+    <p class="section-title" data-i18n="video_layers_title">ترتیب و زمان‌بندی نمایش</p>
+    <div id="videoLayersList"></div>
   </div>
 </div>
 
@@ -646,7 +777,12 @@
       video_prompt_text:'همینجا تو چت با ربات یه ویدیو بفرست؛ ربات یه دکمه‌ی «ویرایش این ویدیو» برات می‌فرسته که مستقیم بازت می‌کنه تو این صفحه.',
       video_editor_title:'ویرایش ویدیو', video_trim_hint:'دستگیره‌ها رو بکش تا بخش دلخواه رو انتخاب کنی',
       video_loading:'در حال دریافت ویدیو از تلگرام…', video_making:'در حال ساخت ویدیو…',
-      video_sent:'ویدیو تو چتت ذخیره شد ✅', video_error:'ساخت ویدیو با مشکل مواجه شد', video_too_long:'حداکثر ۳۰ ثانیه رو انتخاب کن'
+      video_sent:'ویدیو تو چتت ذخیره شد ✅', video_error:'ساخت ویدیو با مشکل مواجه شد', video_too_long:'حداکثر ۳۰ ثانیه رو انتخاب کن',
+      video_add_text:'+ متن', video_text_size:'اندازه', done:'تمام',
+      video_tool_trim:'برش', video_tool_effects:'افکت', video_tool_speed:'سرعت', video_tool_transform:'چرخش/کراپ',
+      video_tool_layers:'لایه‌ها', video_layers_title:'ترتیب و زمان‌بندی نمایش', video_layers_empty:'هنوز متنی اضافه نکردی',
+      video_speed_title:'سرعت پخش', video_rotate:'چرخش ۱۸۰°', video_flip:'آینه‌ای',
+      video_crop_title:'کراپ', video_crop_original:'اصلی'
     },
     en:{
       title:'Photo & Text Editor', save:'Save',
@@ -680,7 +816,12 @@
       video_prompt_text:'Send a video right here in chat with the bot; it\u2019ll reply with an \u201cEdit this video\u201d button that opens it directly in this screen.',
       video_editor_title:'Edit video', video_trim_hint:'Drag the handles to pick the part you want',
       video_loading:'Fetching video from Telegram…', video_making:'Making video…',
-      video_sent:'Saved video to your chat ✅', video_error:'Could not create the video', video_too_long:'Pick 30 seconds or less'
+      video_sent:'Saved video to your chat ✅', video_error:'Could not create the video', video_too_long:'Pick 30 seconds or less',
+      video_add_text:'+ Text', video_text_size:'Size', done:'Done',
+      video_tool_trim:'Trim', video_tool_effects:'Effects', video_tool_speed:'Speed', video_tool_transform:'Rotate/Crop',
+      video_tool_layers:'Layers', video_layers_title:'Order & timing', video_layers_empty:'No text added yet',
+      video_speed_title:'Playback speed', video_rotate:'Rotate 180°', video_flip:'Mirror',
+      video_crop_title:'Crop', video_crop_original:'Original'
     }
   };
   let currentLang = 'fa';
@@ -809,39 +950,38 @@
   }
 
   // Called once, when the user finishes resizing the photo (not live while
-  // dragging — that used to lock the handles in place). If the photo was
-  // left smaller than the frame on any side, this zooms the whole
-  // composition in just enough that the frame always matches the photo,
-  // instead of leaving an empty gap.
-  function fitFrameToBackground(l){
-    if(!l || l.role!=='background') return;
-    const scale = Math.max(1, canvas.width/l.width, canvas.height/l.height);
-    if(scale > 1.0001){
-      const cx = canvas.width/2, cy = canvas.height/2;
-      layers.forEach(ly=>{
-        ly.x = cx + (ly.x-cx)*scale;
-        ly.y = cy + (ly.y-cy)*scale;
-        ly.width *= scale; ly.height *= scale;
-        if(ly.type==='text') ly.baseFontSize *= scale;
-      });
-    }
-    clampBackgroundPosition(l);
-  }
+  // dragging). Used to force-zoom back to full coverage — now it just keeps
+  // the photo from drifting fully off-canvas, so a deliberately smaller/
+  // differently-shaped photo (for a custom export aspect ratio) stays put.
   function exitResizeMode(){
     if(bgEditMode){
       const bg = layers.find(x=>x.role==='background');
-      fitFrameToBackground(bg);
+      clampBackgroundPosition(bg);
     }
     bgEditMode = false;
   }
 
+  // The exported frame = the photo's own occupied rectangle (clipped to the
+  // canvas), not always the full canvas — so resizing the photo smaller/
+  // into a different shape actually changes the exported aspect ratio,
+  // instead of being force-zoomed back to the original frame.
+  function computePhotoFrameRect(){
+    const bg = layers.find(l=>l.role==='background');
+    const curW = canvas.width, curH = canvas.height;
+    if(!bg) return { x:0, y:0, w:curW, h:curH };
+    let x0 = bg.x-bg.width/2, y0 = bg.y-bg.height/2, x1 = bg.x+bg.width/2, y1 = bg.y+bg.height/2;
+    x0 = Math.max(0,x0); y0 = Math.max(0,y0); x1 = Math.min(curW,x1); y1 = Math.min(curH,y1);
+    return { x:x0, y:y0, w:Math.max(1,x1-x0), h:Math.max(1,y1-y0) };
+  }
+
   // ---------- Layer helpers ----------
-  function makeTextLayer(text){
+  function makeTextLayer(text, w, h){
+    w = w || canvas.width; h = h || canvas.height;
     return {
       id: uid(), type:'text', text: text || t('default_text'),
-      x: canvas.width/2, y: canvas.height/2,
-      width: canvas.width*0.55, height: canvas.height*0.09,
-      baseFontSize: canvas.height*0.065,
+      x: w/2, y: h/2,
+      width: w*0.55, height: h*0.09,
+      baseFontSize: h*0.065,
       fontFamily: 'Vazirmatn', bold:true, italic:false,
       color:'#ffffff', align:'center', rotation:0, opacity:1, flipX:false,
       outline:{ enabled:false, color:'#000000', width:6 },
@@ -877,11 +1017,11 @@
     const weight = l.bold ? '700 ' : '400 ';
     return `${style}${weight}${size}px "${l.fontFamily}"`;
   }
-  function measureNatural(l){
-    ctx.font = fontString(l, l.baseFontSize);
+  function measureNatural(context, l){
+    context.font = fontString(l, l.baseFontSize);
     const lines = (l.text || '').split('\n');
     let maxW = 1;
-    lines.forEach(ln=>{ maxW = Math.max(maxW, ctx.measureText(ln || ' ').width); });
+    lines.forEach(ln=>{ maxW = Math.max(maxW, context.measureText(ln || ' ').width); });
     const h = lines.length * l.baseFontSize * 1.3;
     return { w: Math.max(maxW, 1), h: Math.max(h, 1), lines };
   }
@@ -912,7 +1052,7 @@
         }
         ctx.drawImage(l.img, -l.width/2, -l.height/2, l.width, l.height);
       } else if(l.type==='text'){
-        drawTextLayer(l);
+        drawTextLayer(ctx, l);
       }
       ctx.restore();
     });
@@ -930,59 +1070,59 @@
     emptyHint.style.display = layers.length ? 'none' : 'block';
   }
 
-  function drawTextLayer(l){
-    const nat = measureNatural(l);
+  function drawTextLayer(context, l){
+    const nat = measureNatural(context, l);
     const scaleX = l.width / nat.w;
     const scaleY = l.height / nat.h;
 
     if(l.bg && l.bg.enabled){
-      ctx.save();
-      ctx.globalAlpha *= l.bg.opacity;
-      ctx.fillStyle = l.bg.color;
+      context.save();
+      context.globalAlpha *= l.bg.opacity;
+      context.fillStyle = l.bg.color;
       const pad = 16;
-      roundRect(-l.width/2-pad, -l.height/2-pad, l.width+pad*2, l.height+pad*2, 14);
-      ctx.fill();
-      ctx.restore();
+      roundRect(context, -l.width/2-pad, -l.height/2-pad, l.width+pad*2, l.height+pad*2, 14);
+      context.fill();
+      context.restore();
     }
 
-    ctx.scale(scaleX * (l.flipX ? -1 : 1), scaleY);
-    ctx.font = fontString(l, l.baseFontSize);
-    ctx.textAlign = l.align || 'center';
-    ctx.textBaseline = 'middle';
+    context.scale(scaleX * (l.flipX ? -1 : 1), scaleY);
+    context.font = fontString(l, l.baseFontSize);
+    context.textAlign = l.align || 'center';
+    context.textBaseline = 'middle';
 
     const lineH = l.baseFontSize * 1.3;
     const startY = -((nat.lines.length-1)*lineH)/2;
     const alignX = l.align==='left' ? -nat.w/2 : l.align==='right' ? nat.w/2 : 0;
 
     if(l.shadow && l.shadow.enabled){
-      ctx.shadowColor = l.shadow.color;
-      ctx.shadowBlur = l.shadow.blur;
-      ctx.shadowOffsetX = l.shadow.offsetX;
-      ctx.shadowOffsetY = l.shadow.offsetY;
+      context.shadowColor = l.shadow.color;
+      context.shadowBlur = l.shadow.blur;
+      context.shadowOffsetX = l.shadow.offsetX;
+      context.shadowOffsetY = l.shadow.offsetY;
     }
 
     nat.lines.forEach((ln, i)=>{
       const yy = startY + i*lineH;
       if(l.outline && l.outline.enabled){
-        ctx.lineWidth = l.outline.width;
-        ctx.strokeStyle = l.outline.color;
-        ctx.lineJoin = 'round';
-        ctx.strokeText(ln, alignX, yy);
+        context.lineWidth = l.outline.width;
+        context.strokeStyle = l.outline.color;
+        context.lineJoin = 'round';
+        context.strokeText(ln, alignX, yy);
       }
-      ctx.shadowColor = (l.shadow && l.shadow.enabled) ? l.shadow.color : 'transparent';
-      ctx.fillStyle = l.color;
-      ctx.fillText(ln, alignX, yy);
+      context.shadowColor = (l.shadow && l.shadow.enabled) ? l.shadow.color : 'transparent';
+      context.fillStyle = l.color;
+      context.fillText(ln, alignX, yy);
     });
   }
 
-  function roundRect(x,y,w,h,r){
-    ctx.beginPath();
-    ctx.moveTo(x+r,y);
-    ctx.arcTo(x+w,y,x+w,y+h,r);
-    ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r);
-    ctx.arcTo(x,y,x+w,y,r);
-    ctx.closePath();
+  function roundRect(context, x,y,w,h,r){
+    context.beginPath();
+    context.moveTo(x+r,y);
+    context.arcTo(x+w,y,x+w,y+h,r);
+    context.arcTo(x+w,y+h,x,y+h,r);
+    context.arcTo(x,y+h,x,y,r);
+    context.arcTo(x,y,x+w,y,r);
+    context.closePath();
   }
 
   function handlePositions(l){
@@ -1623,32 +1763,42 @@
   }
 
   async function exportPNG(){
-    exitResizeMode(); // make sure any pending resize is fitted to the frame first
+    exitResizeMode(); // make sure any pending resize is settled first
     const wasSelected = selected;
     selected = null; exporting = true;
 
-    // Render the export at the photo's real resolution instead of whatever
-    // size the screen happened to draw the canvas at, so the output isn't
-    // downscaled/upscaled or cropped to an unrelated device aspect ratio.
+    // Export frame = the photo's own occupied rect (see computePhotoFrameRect),
+    // rendered at the photo's real resolution — not the screen's size, and not
+    // force-fitted back to the original canvas shape.
     const curW = canvas.width, curH = canvas.height;
     const bg = layers.find(l=>l.role==='background');
-    let targetW = curW, targetH = curH;
-    if(bg && bg.img && bg.width){
-      const nativeScale = bg.img.naturalWidth / bg.width;
-      targetW = Math.round(curW * nativeScale);
-      targetH = Math.round(curH * nativeScale);
-    }
+    const frame = computePhotoFrameRect();
+
+    let nativeScale = 1;
+    if(bg && bg.img && bg.width) nativeScale = bg.img.naturalWidth / bg.width;
+    let targetW = Math.round(frame.w * nativeScale), targetH = Math.round(frame.h * nativeScale);
     const MAX_EXPORT = 2400, MIN_EXPORT = 800;
     const longEdge = Math.max(targetW, targetH);
-    if(longEdge > MAX_EXPORT){ const s = MAX_EXPORT/longEdge; targetW = Math.round(targetW*s); targetH = Math.round(targetH*s); }
-    else if(longEdge < MIN_EXPORT){ const s = MIN_EXPORT/longEdge; targetW = Math.round(targetW*s); targetH = Math.round(targetH*s); }
-    const resized = (targetW !== curW || targetH !== curH);
-    if(resized) rescaleCanvas(targetW, targetH);
+    let renderScale = nativeScale;
+    if(longEdge > MAX_EXPORT){ const s = MAX_EXPORT/longEdge; targetW = Math.round(targetW*s); targetH = Math.round(targetH*s); renderScale *= s; }
+    else if(longEdge < MIN_EXPORT){ const s = MIN_EXPORT/longEdge; targetW = Math.round(targetW*s); targetH = Math.round(targetH*s); renderScale *= s; }
+
+    // Render the whole composition at renderScale, then crop out just the frame.
+    const bigW = Math.max(1, Math.round(curW*renderScale)), bigH = Math.max(1, Math.round(curH*renderScale));
+    const resized = (bigW !== curW || bigH !== curH);
+    if(resized) rescaleCanvas(bigW, bigH);
     draw();
 
-    canvas.toBlob(async (blob)=>{
-      if(resized) rescaleCanvas(curW, curH);
-      exporting = false; selected = wasSelected; draw();
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = targetW; finalCanvas.height = targetH;
+    finalCanvas.getContext('2d').drawImage(
+      canvas, frame.x*renderScale, frame.y*renderScale, frame.w*renderScale, frame.h*renderScale,
+      0, 0, targetW, targetH
+    );
+    if(resized) rescaleCanvas(curW, curH);
+    exporting = false; selected = wasSelected; draw();
+
+    finalCanvas.toBlob(async (blob)=>{
       if(!blob) return;
 
       // Primary path: deliver straight into the user's chat with the bot.
@@ -1786,15 +1936,17 @@
       selected = null; exporting = true; draw();
 
       // Cap the GIF's resolution — plenty for a chat sticker, keeps encoding fast.
+      // Cropped to the photo's own frame, same as the PNG export.
+      const frame = computePhotoFrameRect();
       const GIF_MAX = 640;
-      const longEdge = Math.max(canvas.width, canvas.height);
+      const longEdge = Math.max(frame.w, frame.h);
       const scale = Math.min(1, GIF_MAX/longEdge);
-      const gw = Math.max(1, Math.round(canvas.width*scale));
-      const gh = Math.max(1, Math.round(canvas.height*scale));
+      const gw = Math.max(1, Math.round(frame.w*scale));
+      const gh = Math.max(1, Math.round(frame.h*scale));
       const off = document.createElement('canvas');
       off.width = gw; off.height = gh;
       const octx = off.getContext('2d');
-      octx.drawImage(canvas, 0, 0, gw, gh);
+      octx.drawImage(canvas, frame.x, frame.y, frame.w, frame.h, 0, 0, gw, gh);
 
       exporting = false; selected = wasSelected; draw();
 
@@ -1912,6 +2064,32 @@
     videoDuration = trimStart = trimEnd = 0;
     trimStartRange.value = 0; trimEndRange.value = 100;
     updateTrimUI();
+    videoTextLayers = [];
+    vtSelected = null;
+    videoTextPanel.classList.add('hidden');
+    videoTrimPanel.classList.remove('hidden');
+    if(vtxCtx) vtxCtx.clearRect(0, 0, videoTextCanvas.width, videoTextCanvas.height);
+    const layersListEl = document.getElementById('videoLayersList');
+    if(layersListEl) layersListEl.innerHTML = '';
+
+    // Reset filters/speed/rotate/flip/crop, and put the tool bar back on "trim".
+    videoFilters = { brightness:100, contrast:100, saturate:100, blur:0, grayscale:0 };
+    videoSpeed = 1; videoRotation = 0; videoFlip = false; videoCropAspect = 'original';
+    videoPreview.style.filter = ''; videoPreview.style.transform = '';
+    videoPreview.style.objectFit = ''; videoPreview.playbackRate = 1;
+    videoStage.style.aspectRatio = ''; videoStage.style.height = '';
+    document.getElementById('vfBright').value = 100; document.getElementById('vfBrightVal').textContent='100%';
+    document.getElementById('vfContrast').value = 100; document.getElementById('vfContrastVal').textContent='100%';
+    document.getElementById('vfSaturate').value = 100; document.getElementById('vfSaturateVal').textContent='100%';
+    document.getElementById('vfBlur').value = 0; document.getElementById('vfBlurVal').textContent='0px';
+    document.getElementById('vfGray').value = 0; document.getElementById('vfGrayVal').textContent='0%';
+    document.querySelector('input[name="vspeed"][value="1"]').checked = true;
+    document.querySelector('input[name="vcrop"][value="original"]').checked = true;
+    document.getElementById('vRotateBtn').classList.remove('active');
+    document.getElementById('vFlipBtn').classList.remove('active');
+    document.querySelectorAll('#videoToolsBar .tbtn').forEach(b=>b.classList.toggle('active', b.dataset.tool==='trim'));
+    Object.values(videoToolPanels).forEach(p=> p.classList.add('hidden'));
+    videoTrimPanel.classList.remove('hidden');
   }
   trimStartRange.addEventListener('input', ()=>{
     let v = +trimStartRange.value;
@@ -1921,6 +2099,7 @@
     videoPreview.pause();
     videoPreview.currentTime = trimStart;
     updateTrimUI();
+    clampLayerTimesToTrim();
   });
   trimEndRange.addEventListener('input', ()=>{
     let v = +trimEndRange.value;
@@ -1935,6 +2114,7 @@
     videoPreview.pause();
     videoPreview.currentTime = trimEnd;
     updateTrimUI();
+    clampLayerTimesToTrim();
   });
   videoPlayToggle.addEventListener('click', ()=>{
     if(videoPreview.paused){
@@ -1954,6 +2134,319 @@
     }
   });
 
+  // ---------- Video: text overlay (drag to move, tap to edit) ----------
+  const videoTextCanvas = document.getElementById('videoTextCanvas');
+  const vtxCtx = videoTextCanvas.getContext('2d');
+  const videoTextPanel = document.getElementById('videoTextPanel');
+  const videoTrimPanel = document.getElementById('videoTrimPanel');
+  let videoTextLayers = [];
+  let vtSelected = null;
+  let vtDrag = null;
+
+  function currentRelTime(){
+    return Math.min(Math.max(videoPreview.currentTime - trimStart, 0), Math.max(0.1, trimEnd-trimStart));
+  }
+  function drawVideoText(){
+    vtxCtx.clearRect(0, 0, videoTextCanvas.width, videoTextCanvas.height);
+    const now = currentRelTime();
+    videoTextLayers.forEach(l=>{
+      // While editing a layer, always show it regardless of its time window,
+      // so positioning/styling it isn't confusing. Otherwise respect the timing.
+      const visible = (l===vtSelected) || (now >= l.startTime && now <= l.endTime);
+      if(!visible) return;
+      vtxCtx.save();
+      vtxCtx.globalAlpha = l.opacity != null ? l.opacity : 1;
+      vtxCtx.translate(l.x, l.y);
+      vtxCtx.rotate(l.rotation || 0);
+      drawTextLayer(vtxCtx, l);
+      vtxCtx.restore();
+      if(l===vtSelected){
+        vtxCtx.save();
+        vtxCtx.translate(l.x, l.y);
+        vtxCtx.rotate(l.rotation || 0);
+        vtxCtx.strokeStyle = '#7c6cf0';
+        vtxCtx.lineWidth = Math.max(2, videoTextCanvas.width*0.003);
+        vtxCtx.setLineDash([8,6]);
+        vtxCtx.strokeRect(-l.width/2-10, -l.height/2-10, l.width+20, l.height+20);
+        vtxCtx.restore();
+      }
+    });
+  }
+  videoPreview.addEventListener('timeupdate', drawVideoText);
+
+  function vtPointFromEvent(e){
+    const rect = videoTextCanvas.getBoundingClientRect();
+    const sx = videoTextCanvas.width / rect.width, sy = videoTextCanvas.height / rect.height;
+    const t0 = e.touches && e.touches[0];
+    const clientX = t0 ? t0.clientX : e.clientX, clientY = t0 ? t0.clientY : e.clientY;
+    return { x: (clientX-rect.left)*sx, y: (clientY-rect.top)*sy };
+  }
+  function vtHitTest(pos){
+    for(let i=videoTextLayers.length-1; i>=0; i--){
+      const l = videoTextLayers[i];
+      const now = currentRelTime();
+      if(!(now >= l.startTime && now <= l.endTime)) continue; // can't tap what isn't currently shown
+      const local = toLocal(pos.x, pos.y, l);
+      if(Math.abs(local.x)<=l.width/2+10 && Math.abs(local.y)<=l.height/2+10) return l;
+    }
+    return null;
+  }
+  function openVideoTextPanel(l){
+    vtSelected = l;
+    videoTrimPanel.classList.add('hidden');
+    videoTextPanel.classList.remove('hidden');
+    document.getElementById('vtTextInput').value = l.text;
+    document.getElementById('vtColorInput').value = l.color;
+    document.getElementById('vtSizeRange').value = Math.round(l.baseFontSize);
+    drawVideoText();
+  }
+  function closeVideoTextPanel(){
+    vtSelected = null;
+    videoTextPanel.classList.add('hidden');
+    // Whichever tool tab is active stays visible — don't force back to trim.
+    const activeTool = document.querySelector('#videoToolsBar .tbtn.active');
+    if(activeTool) videoToolPanels[activeTool.dataset.tool].classList.remove('hidden');
+    drawVideoText();
+  }
+  document.getElementById('videoAddTextBtn').addEventListener('click', ()=>{
+    const l = makeTextLayer(t('default_text'), videoTextCanvas.width, videoTextCanvas.height);
+    l.startTime = 0;
+    l.endTime = Math.max(0.5, trimEnd - trimStart);
+    videoTextLayers.push(l);
+    openVideoTextPanel(l);
+    renderVideoLayersList();
+  });
+  document.getElementById('vtTextInput').addEventListener('input', (e)=>{
+    if(!vtSelected) return;
+    vtSelected.text = e.target.value;
+    drawVideoText();
+    renderVideoLayersList();
+  });
+  document.getElementById('vtColorInput').addEventListener('input', (e)=>{
+    if(!vtSelected) return;
+    vtSelected.color = e.target.value;
+    drawVideoText();
+  });
+  document.getElementById('vtSizeRange').addEventListener('input', (e)=>{
+    if(!vtSelected) return;
+    const nat = measureNatural(vtxCtx, vtSelected);
+    const oldSize = vtSelected.baseFontSize;
+    vtSelected.baseFontSize = +e.target.value;
+    // Keep the box roughly matching the new font size so text doesn't look squashed/stretched.
+    vtSelected.width = vtSelected.width * (vtSelected.baseFontSize/oldSize);
+    vtSelected.height = vtSelected.height * (vtSelected.baseFontSize/oldSize);
+    drawVideoText();
+  });
+  document.getElementById('vtDeleteBtn').addEventListener('click', ()=>{
+    if(!vtSelected) return;
+    videoTextLayers = videoTextLayers.filter(x=>x!==vtSelected);
+    closeVideoTextPanel();
+    renderVideoLayersList();
+  });
+  document.getElementById('vtDoneBtn').addEventListener('click', closeVideoTextPanel);
+
+  // ---------- Video: layers list (stacking order + per-layer visible time range) ----------
+  function clampLayerTimesToTrim(){
+    const total = Math.max(0.1, trimEnd-trimStart);
+    videoTextLayers.forEach(l=>{
+      if(l.endTime > total) l.endTime = total;
+      if(l.startTime > l.endTime-0.2) l.startTime = Math.max(0, l.endTime-0.2);
+    });
+    renderVideoLayersList();
+    drawVideoText();
+  }
+  function reorderLayer(idx, dir){
+    const newIdx = idx+dir;
+    if(newIdx<0 || newIdx>=videoTextLayers.length) return;
+    const tmp = videoTextLayers[idx];
+    videoTextLayers[idx] = videoTextLayers[newIdx];
+    videoTextLayers[newIdx] = tmp;
+    renderVideoLayersList();
+    drawVideoText();
+  }
+  function onLayerTimeChange(idx, which, pct){
+    const l = videoTextLayers[idx];
+    if(!l) return;
+    const total = Math.max(0.1, trimEnd-trimStart);
+    if(which==='start'){
+      let t0 = pct/100*total;
+      if(t0 > l.endTime-0.2) t0 = Math.max(0, l.endTime-0.2);
+      l.startTime = t0;
+    }else{
+      let t1 = pct/100*total;
+      if(t1 < l.startTime+0.2) t1 = Math.min(total, l.startTime+0.2);
+      l.endTime = t1;
+    }
+    renderVideoLayersList();
+    drawVideoText();
+  }
+  function renderVideoLayersList(){
+    const list = document.getElementById('videoLayersList');
+    if(!videoTextLayers.length){
+      list.innerHTML = '<div class="lb-empty">'+escapeHtml(t('video_layers_empty'))+'</div>';
+      return;
+    }
+    const total = Math.max(0.1, trimEnd-trimStart);
+    // Topmost (drawn last, appears on top) shown first — usual "layers panel" order.
+    list.innerHTML = videoTextLayers.slice().reverse().map((l, revIdx)=>{
+      const idx = videoTextLayers.length-1-revIdx;
+      const pctS = (l.startTime/total*100).toFixed(1);
+      const pctE = (l.endTime/total*100).toFixed(1);
+      const label = escapeHtml((l.text||'').slice(0,20) || t('default_text'));
+      return '<div class="vlayer-row">'
+        + '<div class="vlayer-head">'
+        +   '<span class="vlayer-label">📝 '+label+'</span>'
+        +   '<div class="vlayer-actions">'
+        +     '<button class="icon-btn vlayer-up" data-idx="'+idx+'" '+(idx===videoTextLayers.length-1?'disabled':'')+'>▲</button>'
+        +     '<button class="icon-btn vlayer-down" data-idx="'+idx+'" '+(idx===0?'disabled':'')+'>▼</button>'
+        +   '</div>'
+        + '</div>'
+        + '<div class="trim-wrap small">'
+        +   '<div class="trim-track-bg"></div>'
+        +   '<div class="trim-track-selected" style="left:'+pctS+'%; right:'+(100-pctE)+'%;"></div>'
+        +   '<input type="range" class="vlayer-start" data-idx="'+idx+'" min="0" max="100" step="0.5" value="'+pctS+'">'
+        +   '<input type="range" class="vlayer-end" data-idx="'+idx+'" min="0" max="100" step="0.5" value="'+pctE+'">'
+        + '</div>'
+        + '</div>';
+    }).join('');
+    list.querySelectorAll('.vlayer-up').forEach(b=> b.addEventListener('click', ()=> reorderLayer(+b.dataset.idx, 1)));
+    list.querySelectorAll('.vlayer-down').forEach(b=> b.addEventListener('click', ()=> reorderLayer(+b.dataset.idx, -1)));
+    list.querySelectorAll('.vlayer-start').forEach(inp=> inp.addEventListener('input', (e)=> onLayerTimeChange(+e.target.dataset.idx,'start',+e.target.value)));
+    list.querySelectorAll('.vlayer-end').forEach(inp=> inp.addEventListener('input', (e)=> onLayerTimeChange(+e.target.dataset.idx,'end',+e.target.value)));
+  }
+
+
+  videoTextCanvas.addEventListener('pointerdown', (e)=>{
+    const pos = vtPointFromEvent(e);
+    const hit = vtHitTest(pos);
+    if(hit){
+      vtDrag = { layer:hit, startPos:pos, startX:hit.x, startY:hit.y };
+      if(hit !== vtSelected) openVideoTextPanel(hit);
+    }else if(vtSelected){
+      closeVideoTextPanel();
+    }
+  });
+  videoTextCanvas.addEventListener('pointermove', (e)=>{
+    if(!vtDrag) return;
+    e.preventDefault();
+    const pos = vtPointFromEvent(e);
+    vtDrag.layer.x = vtDrag.startX + (pos.x-vtDrag.startPos.x);
+    vtDrag.layer.y = vtDrag.startY + (pos.y-vtDrag.startPos.y);
+    drawVideoText();
+  }, {passive:false});
+  window.addEventListener('pointerup', ()=>{ vtDrag = null; });
+
+  // ---------- Video: tool switching (trim / effects / speed / rotate+crop) ----------
+  const videoStage = document.getElementById('videoStage');
+  const videoToolPanels = {
+    trim: document.getElementById('videoTrimPanel'),
+    effects: document.getElementById('videoEffectsPanel'),
+    speed: document.getElementById('videoSpeedPanel'),
+    transform: document.getElementById('videoTransformPanel'),
+    layers: document.getElementById('videoLayersPanel'),
+  };
+  document.querySelectorAll('#videoToolsBar .tbtn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#videoToolsBar .tbtn').forEach(b=>b.classList.toggle('active', b===btn));
+      const tool = btn.dataset.tool;
+      Object.keys(videoToolPanels).forEach(k=> videoToolPanels[k].classList.toggle('hidden', k!==tool));
+      closeVideoTextPanel();
+      if(tool==='layers') renderVideoLayersList();
+    });
+  });
+
+  // ---------- Video: filters ----------
+  let videoFilters = { brightness:100, contrast:100, saturate:100, blur:0, grayscale:0 };
+  function filterCss(f){
+    return `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) blur(${f.blur}px) grayscale(${f.grayscale}%)`;
+  }
+  function applyVideoFilterPreview(){ videoPreview.style.filter = filterCss(videoFilters); }
+  function bindVideoFilter(id, valId, key, unit){
+    document.getElementById(id).addEventListener('input', (e)=>{
+      videoFilters[key] = +e.target.value;
+      document.getElementById(valId).textContent = e.target.value+unit;
+      applyVideoFilterPreview();
+    });
+  }
+  bindVideoFilter('vfBright','vfBrightVal','brightness','%');
+  bindVideoFilter('vfContrast','vfContrastVal','contrast','%');
+  bindVideoFilter('vfSaturate','vfSaturateVal','saturate','%');
+  bindVideoFilter('vfBlur','vfBlurVal','blur','px');
+  bindVideoFilter('vfGray','vfGrayVal','grayscale','%');
+  document.getElementById('vfResetBtn').addEventListener('click', ()=>{
+    videoFilters = { brightness:100, contrast:100, saturate:100, blur:0, grayscale:0 };
+    document.getElementById('vfBright').value = 100; document.getElementById('vfBrightVal').textContent='100%';
+    document.getElementById('vfContrast').value = 100; document.getElementById('vfContrastVal').textContent='100%';
+    document.getElementById('vfSaturate').value = 100; document.getElementById('vfSaturateVal').textContent='100%';
+    document.getElementById('vfBlur').value = 0; document.getElementById('vfBlurVal').textContent='0px';
+    document.getElementById('vfGray').value = 0; document.getElementById('vfGrayVal').textContent='0%';
+    applyVideoFilterPreview();
+  });
+
+  // ---------- Video: speed ----------
+  let videoSpeed = 1;
+  document.querySelectorAll('input[name="vspeed"]').forEach(r=>{
+    r.addEventListener('change', ()=>{
+      videoSpeed = +r.value;
+      videoPreview.playbackRate = videoSpeed;
+    });
+  });
+
+  // ---------- Video: rotate 180° / mirror flip / crop ----------
+  let videoRotation = 0; // 0 or 180
+  let videoFlip = false;
+  let videoCropAspect = 'original'; // 'original' | '1:1' | '9:16' | '16:9'
+  function applyVideoTransformPreview(){
+    let tr = '';
+    if(videoRotation) tr += 'rotate(180deg) ';
+    if(videoFlip) tr += 'scaleX(-1)';
+    videoPreview.style.transform = tr.trim();
+  }
+  function applyCropPreview(){
+    if(videoCropAspect === 'original'){
+      videoStage.style.aspectRatio = '';
+      videoPreview.style.objectFit = '';
+      videoStage.style.height = '';
+    }else{
+      const [aw, ah] = videoCropAspect.split(':').map(Number);
+      videoStage.style.aspectRatio = `${aw} / ${ah}`;
+      videoPreview.style.objectFit = 'cover';
+      videoStage.style.height = '100%';
+    }
+  }
+  document.getElementById('vRotateBtn').addEventListener('click', ()=>{
+    videoRotation = videoRotation ? 0 : 180;
+    document.getElementById('vRotateBtn').classList.toggle('active', !!videoRotation);
+    applyVideoTransformPreview();
+  });
+  document.getElementById('vFlipBtn').addEventListener('click', ()=>{
+    videoFlip = !videoFlip;
+    document.getElementById('vFlipBtn').classList.toggle('active', videoFlip);
+    applyVideoTransformPreview();
+  });
+  document.querySelectorAll('input[name="vcrop"]').forEach(r=>{
+    r.addEventListener('change', ()=>{
+      videoCropAspect = r.value;
+      applyCropPreview();
+    });
+  });
+  // Figures out the source rect (in native video pixels) and final output size
+  // for the chosen crop aspect, "cover" style (centered, no letterboxing).
+  function computeExportGeometry(){
+    const vw = videoPreview.videoWidth||640, vh = videoPreview.videoHeight||360;
+    let srcX=0, srcY=0, srcW=vw, srcH=vh;
+    if(videoCropAspect !== 'original'){
+      const [aw, ah] = videoCropAspect.split(':').map(Number);
+      const targetRatio = aw/ah;
+      if(vw/vh > targetRatio){ srcH = vh; srcW = Math.round(vh*targetRatio); srcX = Math.round((vw-srcW)/2); }
+      else{ srcW = vw; srcH = Math.round(vw/targetRatio); srcY = Math.round((vh-srcH)/2); }
+    }
+    const MAXV = 960;
+    let cw = srcW, ch = srcH;
+    if(Math.max(cw,ch) > MAXV){ const s = MAXV/Math.max(cw,ch); cw=Math.round(cw*s); ch=Math.round(ch*s); }
+    return { srcX, srcY, srcW, srcH, cw, ch };
+  }
+
   async function loadVideoFromTelegramFile(fileId){
     showScreen('video');
     videoLoadingOverlay.classList.add('show');
@@ -1969,6 +2462,11 @@
       trimStartRange.value = 0;
       trimEndRange.value = videoDuration ? (trimEnd/videoDuration*100) : 100;
       updateTrimUI();
+      videoTextCanvas.width = videoPreview.videoWidth || 640;
+      videoTextCanvas.height = videoPreview.videoHeight || 360;
+      videoTextLayers = [];
+      vtSelected = null;
+      drawVideoText();
     }catch(e){
       console.error('could not load telegram video', e);
       alert(t('video_error'));
@@ -1980,16 +2478,14 @@
 
   async function exportVideo(){
     if(!videoDuration || trimEnd-trimStart <= 0.2) return;
+    closeVideoTextPanel();
     showToast(t('video_making'));
     try{
       videoPreview.pause();
       videoPreview.currentTime = trimStart;
       await new Promise(resolve=>{ videoPreview.onseeked = resolve; });
 
-      const vw = videoPreview.videoWidth||640, vh = videoPreview.videoHeight||360;
-      const MAXV = 960;
-      let cw = vw, ch = vh;
-      if(Math.max(cw,ch) > MAXV){ const s = MAXV/Math.max(cw,ch); cw=Math.round(cw*s); ch=Math.round(ch*s); }
+      const { srcX, srcY, srcW, srcH, cw, ch } = computeExportGeometry();
       const vcanvas = document.createElement('canvas');
       vcanvas.width = cw; vcanvas.height = ch;
       const vctx = vcanvas.getContext('2d');
@@ -2008,8 +2504,36 @@
       const stopped = new Promise(resolve=>{ recorder.onstop = resolve; });
 
       let raf;
+      const textScale = cw / srcW;
+      const filterStr = filterCss(videoFilters);
       function drawFrame(){
-        vctx.drawImage(videoPreview, 0, 0, cw, ch);
+        // Video, with crop/rotate/flip/filters applied.
+        vctx.save();
+        vctx.filter = filterStr;
+        vctx.translate(cw/2, ch/2);
+        if(videoRotation) vctx.rotate(Math.PI);
+        vctx.scale(videoFlip ? -1 : 1, 1);
+        vctx.drawImage(videoPreview, srcX, srcY, srcW, srcH, -cw/2, -ch/2, cw, ch);
+        vctx.restore();
+
+        // Text overlay, cropped/scaled to match — kept upright regardless of rotate/flip.
+        // Only layers whose time window covers the current playback position get drawn.
+        if(videoTextLayers.length){
+          const relNow = videoPreview.currentTime - trimStart;
+          vctx.save();
+          vctx.translate(-srcX*textScale, -srcY*textScale);
+          vctx.scale(textScale, textScale);
+          videoTextLayers.forEach(l=>{
+            if(relNow < l.startTime || relNow > l.endTime) return;
+            vctx.save();
+            vctx.globalAlpha = l.opacity != null ? l.opacity : 1;
+            vctx.translate(l.x, l.y);
+            vctx.rotate(l.rotation || 0);
+            drawTextLayer(vctx, l);
+            vctx.restore();
+          });
+          vctx.restore();
+        }
         raf = requestAnimationFrame(drawFrame);
       }
       recorder.start();
