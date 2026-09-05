@@ -1835,153 +1835,7 @@
   }
   document.getElementById('saveBtn').addEventListener('click', exportPNG);
 
-  // ---------- GIF (real .gif file, not a video, so Telegram shows an actual GIF) ----------
-  // Telegram's sendAnimation only renders inline as a GIF for real GIF (or H.264 mp4)
-  // files — a webm video gets delivered as a plain video attachment instead. Since the
-  // canvas content itself doesn't move, we build a real single-frame GIF89a file
-  // client-side (LZW encoding) instead of recording video.
-  //
-  // The palette is built per-image (median-cut), not a fixed color cube — a fixed
-  // palette is what was causing the muddy/banded colors before.
-  function medianCutPalette(imageData, maxColors){
-    const { data } = imageData;
-    const n = data.length/4;
-    // Building the palette from every pixel is what made this slow — a
-    // representative sample gives an essentially identical palette in a
-    // fraction of the time (the full image is still used when applying it).
-    const SAMPLE_CAP = 12000;
-    const stride = Math.max(1, Math.floor(n/SAMPLE_CAP));
-    const pixels = [];
-    for(let p=0; p<n; p+=stride){
-      const off = p*4;
-      pixels.push([data[off], data[off+1], data[off+2]]);
-    }
-    let buckets = [pixels];
-    while(buckets.length < maxColors){
-      let bestIdx=-1, bestRange=-1, bestChannel=0;
-      buckets.forEach((b, idx)=>{
-        if(b.length < 2) return;
-        for(let c=0;c<3;c++){
-          let mn=255, mx=0;
-          for(let i=0;i<b.length;i++){ const v=b[i][c]; if(v<mn) mn=v; if(v>mx) mx=v; }
-          const range = mx-mn;
-          if(range > bestRange){ bestRange=range; bestIdx=idx; bestChannel=c; }
-        }
-      });
-      if(bestIdx===-1 || bestRange<=0) break;
-      const bucket = buckets[bestIdx];
-      bucket.sort((a,b)=> a[bestChannel]-b[bestChannel]);
-      const mid = Math.floor(bucket.length/2);
-      buckets.splice(bestIdx, 1, bucket.slice(0,mid), bucket.slice(mid));
-    }
-    const palette = buckets.map(b=>{
-      if(!b.length) return [0,0,0];
-      let r=0,g=0,bl=0;
-      for(let i=0;i<b.length;i++){ r+=b[i][0]; g+=b[i][1]; bl+=b[i][2]; }
-      return [Math.round(r/b.length), Math.round(g/b.length), Math.round(bl/b.length)];
-    });
-    while(palette.length < 256) palette.push([0,0,0]);
-    return palette;
-  }
-  function quantizeToIndices(imageData, palette, cache){
-    cache = cache || new Map();
-    const { data } = imageData;
-    const indices = new Uint8Array(data.length/4);
-    for(let i=0, p=0; i<data.length; i+=4, p++){
-      const r=data[i], g=data[i+1], b=data[i+2];
-      const key = (r<<16)|(g<<8)|b;
-      let idx = cache.get(key);
-      if(idx === undefined){
-        let best=0, bestDist=Infinity;
-        for(let c=0;c<palette.length;c++){
-          const pc = palette[c];
-          const dr=r-pc[0], dg=g-pc[1], db=b-pc[2];
-          const dist = dr*dr+dg*dg+db*db;
-          if(dist < bestDist){ bestDist=dist; best=c; }
-        }
-        idx = best;
-        cache.set(key, idx);
-      }
-      indices[p] = idx;
-    }
-    return indices;
-  }
-  function lzwEncodeGif(minCodeSize, indices){
-    const clearCode = 1 << minCodeSize;
-    const eoiCode = clearCode + 1;
-    const bytes = [];
-    let bitBuffer = 0, bitCount = 0, dict, nextCode, codeSize;
-    function writeCode(code){
-      bitBuffer |= (code << bitCount);
-      bitCount += codeSize;
-      while(bitCount >= 8){ bytes.push(bitBuffer & 0xFF); bitBuffer >>= 8; bitCount -= 8; }
-    }
-    function resetDict(){
-      dict = new Map();
-      for(let i=0;i<clearCode;i++) dict.set(String(i), i);
-      nextCode = eoiCode + 1;
-      codeSize = minCodeSize + 1;
-    }
-    resetDict();
-    writeCode(clearCode);
-    let w = String(indices[0]);
-    for(let i=1;i<indices.length;i++){
-      const k = indices[i];
-      const wk = w + ',' + k;
-      if(dict.has(wk)){
-        w = wk;
-      } else {
-        writeCode(dict.get(w));
-        // GIF's LZW code-size bump must be checked *before* the new entry is
-        // added (this is the classic GIF "early change" quirk) — checking
-        // after, like a plain textbook LZW encoder, produces a bitstream
-        // real decoders (Telegram, browsers, PIL, etc.) can't read past the
-        // first size boundary.
-        if(nextCode >= (1<<codeSize) && codeSize < 12) codeSize++;
-        if(nextCode < 4096){
-          dict.set(wk, nextCode);
-          nextCode++;
-        } else {
-          writeCode(clearCode);
-          resetDict();
-        }
-        w = String(k);
-      }
-    }
-    writeCode(dict.get(w));
-    writeCode(eoiCode);
-    if(bitCount > 0) bytes.push(bitBuffer & 0xFF);
-    return bytes;
-  }
-  function buildGif89aAnimated(width, height, frames, palette, delayCs){
-    const bytes = [];
-    const pushStr = s=>{ for(let i=0;i<s.length;i++) bytes.push(s.charCodeAt(i)); };
-    const push16 = n=>{ bytes.push(n & 0xFF, (n>>8) & 0xFF); };
-    pushStr('GIF89a');
-    push16(width); push16(height);
-    bytes.push(0xF7, 0, 0); // global color table w/ 256 entries, bg index 0, aspect 0
-    palette.forEach(c=> bytes.push(c[0], c[1], c[2]));
-    // Netscape2.0 application extension — tells viewers (and Telegram) to loop forever.
-    // Without this a GIF is technically valid but plays once, and Telegram won't
-    // treat it as a "real" animation you can add to your saved GIFs.
-    bytes.push(0x21, 0xFF, 0x0B);
-    pushStr('NETSCAPE2.0');
-    bytes.push(0x03, 0x01, 0x00, 0x00, 0x00);
-    frames.forEach(indices=>{
-      bytes.push(0x21, 0xF9, 0x04, 0x00, delayCs & 0xFF, (delayCs>>8) & 0xFF, 0x00, 0x00); // graphic control ext
-      bytes.push(0x2C); push16(0); push16(0); push16(width); push16(height); bytes.push(0x00); // image descriptor
-      const minCodeSize = 8;
-      bytes.push(minCodeSize);
-      const lzw = lzwEncodeGif(minCodeSize, indices);
-      for(let i=0;i<lzw.length;i+=255){
-        const chunk = lzw.slice(i, i+255);
-        bytes.push(chunk.length, ...chunk);
-      }
-      bytes.push(0x00); // block terminator
-    });
-    bytes.push(0x3B); // trailer
-    return new Uint8Array(bytes);
-  }
+  // ---------- GIF (short silent looping video of the still photo) ----------
   async function makeGif(){
     if(!layers.length){ alert(t('no_image_alert')); return; }
     exitResizeMode(); // make sure any pending resize is fitted to the frame first
@@ -1990,46 +1844,45 @@
     try{
       selected = null; exporting = true; draw();
 
-      // A single still frame isn't a real animation, so Telegram won't let you
-      // add it to your saved GIFs — build a short looping Ken-Burns zoom instead
-      // (12 frames, ping-ponging in and back out) so it's a genuine animated GIF.
+      // The photo, as-is — no zoom/motion. Recorded as a short silent video
+      // (the frame never changes) and delivered the same way real "GIFs" work
+      // in Telegram/Twitter/etc: a muted looping video, not a literal .gif file.
       const frame = computePhotoFrameRect();
-      const GIF_MAX = 480; // kept smaller than the static export — multiplied by frame count
-      const FRAME_COUNT = 12;
-      const DELAY_CS = 14; // 140ms/frame, ~1.7s per loop
-      const ZOOM_MAX = 1.06;
-
+      const GIF_MAX = 960;
       const longEdge = Math.max(frame.w, frame.h);
-      const baseScale = Math.min(1, GIF_MAX/longEdge);
-      const gw = Math.max(1, Math.round(frame.w*baseScale));
-      const gh = Math.max(1, Math.round(frame.h*baseScale));
+      const scale = Math.min(1, GIF_MAX/longEdge);
+      const gw = Math.max(1, Math.round(frame.w*scale));
+      const gh = Math.max(1, Math.round(frame.h*scale));
 
       const off = document.createElement('canvas');
       off.width = gw; off.height = gh;
       const octx = off.getContext('2d');
-
-      const rawFrames = [];
-      for(let i=0;i<FRAME_COUNT;i++){
-        const wave = Math.sin((i/FRAME_COUNT)*Math.PI); // 0 at the loop seam, 1 at the midpoint — seamless loop
-        const z = 1 + (ZOOM_MAX-1)*wave;
-        const sw = frame.w/z, sh = frame.h/z;
-        const sx = frame.x + (frame.w-sw)/2, sy = frame.y + (frame.h-sh)/2;
-        octx.clearRect(0,0,gw,gh);
-        octx.drawImage(canvas, sx, sy, sw, sh, 0, 0, gw, gh);
-        rawFrames.push(octx.getImageData(0,0,gw,gh));
-      }
+      octx.drawImage(canvas, frame.x, frame.y, frame.w, frame.h, 0, 0, gw, gh);
 
       exporting = false; selected = wasSelected; draw();
 
-      // One shared palette + one shared color->index cache for every frame — a
-      // Ken-Burns zoom reuses most of the same colors frame to frame, so this
-      // keeps quantizing all 12 frames fast instead of redoing it from scratch.
-      const palette = medianCutPalette(rawFrames[Math.floor(FRAME_COUNT/2)], 256);
-      const cache = new Map();
-      const frameIndices = rawFrames.map(imgData => quantizeToIndices(imgData, palette, cache));
+      if(typeof off.captureStream !== 'function' || typeof window.MediaRecorder === 'undefined'){
+        alert(t('gif_error'));
+        return;
+      }
+      const stream = off.captureStream(0); // 0 = only emit a frame when the canvas actually changes
+      const track = stream.getVideoTracks()[0];
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
+                      : MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8'
+                      : 'video/webm';
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 1500000 });
+      const chunks = [];
+      recorder.ondataavailable = e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+      const stopped = new Promise(resolve=>{ recorder.onstop = resolve; });
+      recorder.start();
+      // The image never changes, so nudge the track to emit a frame every so
+      // often — otherwise a "only on change" stream would just emit one frame
+      // and some players won't treat a near-zero-length clip as a real video.
+      const nudge = setInterval(()=>{ if(track.requestFrame) track.requestFrame(); }, 200);
+      setTimeout(()=>{ clearInterval(nudge); recorder.stop(); }, 2000);
+      await stopped;
 
-      const gifBytes = buildGif89aAnimated(gw, gh, frameIndices, palette, DELAY_CS);
-      const blob = new Blob([gifBytes], { type:'image/gif' });
+      const blob = new Blob(chunks, { type:'video/webm' });
 
       if(tg && tg.initData){
         try{
@@ -2045,7 +1898,7 @@
       // Fallback outside Telegram (or if delivery failed): plain download.
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = 'edifast.gif'; a.click();
+      a.href = url; a.download = 'edifast.webm'; a.click();
       setTimeout(()=>URL.revokeObjectURL(url), 2000);
     }catch(e){
       exporting = false; selected = wasSelected; draw();
