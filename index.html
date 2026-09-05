@@ -1883,10 +1883,10 @@
     while(palette.length < 256) palette.push([0,0,0]);
     return palette;
   }
-  function quantizeToIndices(imageData, palette){
+  function quantizeToIndices(imageData, palette, cache){
+    cache = cache || new Map();
     const { data } = imageData;
     const indices = new Uint8Array(data.length/4);
-    const cache = new Map(); // exact-color memo — most photos repeat a LOT of pixel values
     for(let i=0, p=0; i<data.length; i+=4, p++){
       const r=data[i], g=data[i+1], b=data[i+2];
       const key = (r<<16)|(g<<8)|b;
@@ -1953,7 +1953,7 @@
     if(bitCount > 0) bytes.push(bitBuffer & 0xFF);
     return bytes;
   }
-  function buildGif89a(width, height, indices, palette){
+  function buildGif89aAnimated(width, height, frames, palette, delayCs){
     const bytes = [];
     const pushStr = s=>{ for(let i=0;i<s.length;i++) bytes.push(s.charCodeAt(i)); };
     const push16 = n=>{ bytes.push(n & 0xFF, (n>>8) & 0xFF); };
@@ -1961,16 +1961,25 @@
     push16(width); push16(height);
     bytes.push(0xF7, 0, 0); // global color table w/ 256 entries, bg index 0, aspect 0
     palette.forEach(c=> bytes.push(c[0], c[1], c[2]));
-    bytes.push(0x21, 0xF9, 0x04, 0x00, 0x0A, 0x00, 0x00, 0x00); // graphic control ext
-    bytes.push(0x2C); push16(0); push16(0); push16(width); push16(height); bytes.push(0x00); // image descriptor
-    const minCodeSize = 8;
-    bytes.push(minCodeSize);
-    const lzw = lzwEncodeGif(minCodeSize, indices);
-    for(let i=0;i<lzw.length;i+=255){
-      const chunk = lzw.slice(i, i+255);
-      bytes.push(chunk.length, ...chunk);
-    }
-    bytes.push(0x00, 0x3B); // block terminator + trailer
+    // Netscape2.0 application extension — tells viewers (and Telegram) to loop forever.
+    // Without this a GIF is technically valid but plays once, and Telegram won't
+    // treat it as a "real" animation you can add to your saved GIFs.
+    bytes.push(0x21, 0xFF, 0x0B);
+    pushStr('NETSCAPE2.0');
+    bytes.push(0x03, 0x01, 0x00, 0x00, 0x00);
+    frames.forEach(indices=>{
+      bytes.push(0x21, 0xF9, 0x04, 0x00, delayCs & 0xFF, (delayCs>>8) & 0xFF, 0x00, 0x00); // graphic control ext
+      bytes.push(0x2C); push16(0); push16(0); push16(width); push16(height); bytes.push(0x00); // image descriptor
+      const minCodeSize = 8;
+      bytes.push(minCodeSize);
+      const lzw = lzwEncodeGif(minCodeSize, indices);
+      for(let i=0;i<lzw.length;i+=255){
+        const chunk = lzw.slice(i, i+255);
+        bytes.push(chunk.length, ...chunk);
+      }
+      bytes.push(0x00); // block terminator
+    });
+    bytes.push(0x3B); // trailer
     return new Uint8Array(bytes);
   }
   async function makeGif(){
@@ -1981,25 +1990,45 @@
     try{
       selected = null; exporting = true; draw();
 
-      // Cap the GIF's resolution — plenty for a chat sticker, keeps encoding fast.
-      // Cropped to the photo's own frame, same as the PNG export.
+      // A single still frame isn't a real animation, so Telegram won't let you
+      // add it to your saved GIFs — build a short looping Ken-Burns zoom instead
+      // (12 frames, ping-ponging in and back out) so it's a genuine animated GIF.
       const frame = computePhotoFrameRect();
-      const GIF_MAX = 800; // bumped up now that the palette is adaptive, not a fixed color cube
+      const GIF_MAX = 480; // kept smaller than the static export — multiplied by frame count
+      const FRAME_COUNT = 12;
+      const DELAY_CS = 14; // 140ms/frame, ~1.7s per loop
+      const ZOOM_MAX = 1.06;
+
       const longEdge = Math.max(frame.w, frame.h);
-      const scale = Math.min(1, GIF_MAX/longEdge);
-      const gw = Math.max(1, Math.round(frame.w*scale));
-      const gh = Math.max(1, Math.round(frame.h*scale));
+      const baseScale = Math.min(1, GIF_MAX/longEdge);
+      const gw = Math.max(1, Math.round(frame.w*baseScale));
+      const gh = Math.max(1, Math.round(frame.h*baseScale));
+
       const off = document.createElement('canvas');
       off.width = gw; off.height = gh;
       const octx = off.getContext('2d');
-      octx.drawImage(canvas, frame.x, frame.y, frame.w, frame.h, 0, 0, gw, gh);
+
+      const rawFrames = [];
+      for(let i=0;i<FRAME_COUNT;i++){
+        const wave = Math.sin((i/FRAME_COUNT)*Math.PI); // 0 at the loop seam, 1 at the midpoint — seamless loop
+        const z = 1 + (ZOOM_MAX-1)*wave;
+        const sw = frame.w/z, sh = frame.h/z;
+        const sx = frame.x + (frame.w-sw)/2, sy = frame.y + (frame.h-sh)/2;
+        octx.clearRect(0,0,gw,gh);
+        octx.drawImage(canvas, sx, sy, sw, sh, 0, 0, gw, gh);
+        rawFrames.push(octx.getImageData(0,0,gw,gh));
+      }
 
       exporting = false; selected = wasSelected; draw();
 
-      const imageData = octx.getImageData(0, 0, gw, gh);
-      const palette = medianCutPalette(imageData, 256);
-      const indices = quantizeToIndices(imageData, palette);
-      const gifBytes = buildGif89a(gw, gh, indices, palette);
+      // One shared palette + one shared color->index cache for every frame — a
+      // Ken-Burns zoom reuses most of the same colors frame to frame, so this
+      // keeps quantizing all 12 frames fast instead of redoing it from scratch.
+      const palette = medianCutPalette(rawFrames[Math.floor(FRAME_COUNT/2)], 256);
+      const cache = new Map();
+      const frameIndices = rawFrames.map(imgData => quantizeToIndices(imgData, palette, cache));
+
+      const gifBytes = buildGif89aAnimated(gw, gh, frameIndices, palette, DELAY_CS);
       const blob = new Blob([gifBytes], { type:'image/gif' });
 
       if(tg && tg.initData){
