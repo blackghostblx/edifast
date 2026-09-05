@@ -66,7 +66,9 @@ module.exports = async (req, res) => {
       }
       const form = new FormData();
       form.append('chat_id', String(user.id));
-      form.append('animation', new Blob([buf], { type: 'image/gif' }), 'edifast.gif');
+      // A short silent video of the still photo — Telegram plays this back
+      // inline (autoplay, looping, muted) the same way a real GIF would.
+      form.append('animation', new Blob([buf], { type: 'video/webm' }), 'edifast.webm');
 
       const tgRes = await fetch(`${API}/sendAnimation`, { method: 'POST', body: form });
       const data = await tgRes.json();
